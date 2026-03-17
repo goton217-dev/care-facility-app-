@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>介護施設 比較ノート</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .star { cursor: pointer; font-size: 1.5rem; color: #d1d5db; }
+    .star.active { color: #f59e0b; }
+    .tab-btn.active { border-bottom: 3px solid #3b82f6; color: #3b82f6; font-weight: bold; }
+    body { font-family: 'Hiragino Kaku Gothic ProN', 'メイリオ', sans-serif; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<!-- ログイン画面 -->
+<div id="loginScreen" class="min-h-screen flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-lg p-8 w-full max-w-sm">
+    <div class="text-center mb-6">
+      <div class="text-5xl mb-3">🏠</div>
+      <h1 class="text-2xl font-bold text-gray-800">介護施設 比較ノート</h1>
+      <p class="text-gray-500 text-sm mt-1">家族で一緒に施設を選ぶためのアプリ</p>
+    </div>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">名前</label>
+        <select id="loginName" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+          <option value="">選択してください</option>
+          <option>長男</option>
+          <option>次男</option>
+          <option>長女</option>
+          <option>ケアマネージャー</option>
+        </select>
+      </div>
+      <p id="loginError" class="text-red-500 text-sm hidden">名前を選択してください</p>
+      <button onclick="login()" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2.5 rounded-lg transition">ログイン</button>
+    </div>
+  </div>
+</div>
+
+<!-- メイン画面 -->
+<div id="mainScreen" class="hidden">
+  <!-- ヘッダー -->
+  <header class="bg-white shadow-sm sticky top-0 z-10">
+    <div class="max-w-4xl mx-auto px-4 py-3 flex justify-between items-center">
+      <div class="flex items-center gap-2">
+        <span class="text-2xl">🏠</span>
+        <span class="font-bold text-gray-800">介護施設 比較ノート</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <span id="headerUserName" class="text-sm text-gray-600"></span>
+        <button onclick="logout()" class="text-sm text-gray-500 hover:text-red-500 transition">ログアウト</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- コンテンツ -->
+  <div class="max-w-4xl mx-auto px-4 py-6">
+
+    <!-- 施設一覧 -->
+    <div id="listView">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold text-gray-800">施設一覧</h2>
+        <div class="flex gap-2">
+          <button onclick="showAllCompare()" class="bg-green-500 hover:bg-green-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition">
+            📊 全施設を比較
+          </button>
+          <button id="addFacilityBtn" onclick="showAddFacility()" class="bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition hidden">
+            ＋ 施設を追加
+          </button>
+        </div>
+      </div>
+
+      <div id="facilitiesList" class="space-y-3">
+        <div class="text-center text-gray-400 py-8">読み込み中...</div>
+      </div>
+    </div>
+
+    <!-- 全施設比較ビュー -->
+    <div id="allCompareView" class="hidden">
+      <div class="flex items-center gap-3 mb-4">
+        <button onclick="showList()" class="text-blue-500 hover:text-blue-700">← 一覧へ戻る</button>
+        <h2 class="text-xl font-bold text-gray-800">全施設 比較表</h2>
+      </div>
+      <div id="allCompareTable" class="overflow-x-auto"></div>
+    </div>
+
+    <!-- 施設追加フォーム -->
+    <div id="addFacilityView" class="hidden">
+      <div class="flex items-center gap-3 mb-4">
+        <button onclick="showList()" class="text-blue-500 hover:text-blue-700">← 戻る</button>
+        <h2 class="text-xl font-bold text-gray-800">施設を追加</h2>
+      </div>
+      <div class="bg-white rounded-xl shadow p-5 space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">施設名 <span class="text-red-500">*</span></label>
+          <input id="newFacilityName" type="text" placeholder="例：○○介護老人保健施設"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">施設種別</label>
+          <select id="newFacilityType" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+            <option value="">選択してください</option>
+            <option>特別養護老人ホーム（特養）</option>
+            <option>介護老人保健施設（老健）</option>
+            <option>介護付き有料老人ホーム</option>
+            <option>住宅型有料老人ホーム</option>
+            <option>グループホーム</option>
+            <option>サービス付き高齢者向け住宅</option>
+            <option>その他</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">住所</label>
+          <input id="newFacilityAddress" type="text" placeholder="例：東京都新宿区○○1-2-3"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">電話番号</label>
+          <input id="newFacilityPhone" type="tel" placeholder="例：03-1234-5678"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">見学日</label>
+          <input id="newFacilityDate" type="date"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+        </div>
+        <button onclick="addFacility()" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2.5 rounded-lg transition">
+          追加する
+        </button>
+      </div>
+    </div>
+
+    <!-- 施設詳細 -->
+    <div id="detailView" class="hidden">
+      <div class="flex items-center gap-3 mb-4">
+        <button onclick="showList()" class="text-blue-500 hover:text-blue-700">← 一覧へ戻る</button>
+      </div>
+
+      <!-- 施設情報カード -->
+      <div class="bg-white rounded-xl shadow p-5 mb-4">
+        <div class="flex justify-between items-start">
+          <div>
+            <h2 id="detailName" class="text-xl font-bold text-gray-800"></h2>
+            <p id="detailType" class="text-sm text-blue-600 mt-0.5"></p>
+            <p id="detailAddress" class="text-sm text-gray-500 mt-1"></p>
+            <p id="detailPhone" class="text-sm text-gray-500"></p>
+            <p id="detailDate" class="text-sm text-gray-500"></p>
+          </div>
+          <button id="editFacilityBtn" onclick="showEditFacility()" class="text-sm text-gray-400 hover:text-blue-500 hidden">編集</button>
+        </div>
+      </div>
+
+      <!-- タブ -->
+      <div class="flex border-b mb-4">
+        <button class="tab-btn active px-4 py-2 text-sm" onclick="switchTab('eval')">評価シート</button>
+        <button class="tab-btn px-4 py-2 text-sm" onclick="switchTab('compare')">メンバー比較</button>
+        <button class="tab-btn px-4 py-2 text-sm" onclick="switchTab('comment')">コメント</button>
+      </div>
+
+      <!-- 評価シートタブ -->
+      <div id="tabEval">
+        <div id="evalForm" class="space-y-4"></div>
+        <button id="saveEvalBtn" onclick="saveAllEvals()" class="hidden mt-4 w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2.5 rounded-lg transition">
+          評価を保存
+        </button>
+      </div>
+
+      <!-- メンバー比較タブ -->
+      <div id="tabCompare" class="hidden">
+        <div id="compareTable"></div>
+      </div>
+
+      <!-- コメントタブ -->
+      <div id="tabComment" class="hidden">
+        <div id="commentsList" class="space-y-3 mb-4"></div>
+        <div class="bg-white rounded-xl shadow p-4">
+          <textarea id="commentInput" placeholder="コメントを入力..." rows="3"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"></textarea>
+          <button onclick="addComment()" class="mt-2 w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 rounded-lg text-sm transition">
+            コメントを投稿
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 施設編集フォーム -->
+    <div id="editFacilityView" class="hidden">
+      <div class="flex items-center gap-3 mb-4">
+        <button onclick="showDetail(currentFacilityId)" class="text-blue-500 hover:text-blue-700">← 戻る</button>
+        <h2 class="text-xl font-bold text-gray-800">施設情報を編集</h2>
+      </div>
+      <div class="bg-white rounded-xl shadow p-5 space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">施設名 <span class="text-red-500">*</span></label>
+          <input id="editFacilityName" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">施設種別</label>
+          <select id="editFacilityType" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+            <option value="">選択してください</option>
+            <option>特別養護老人ホーム（特養）</option>
+            <option>介護老人保健施設（老健）</option>
+            <option>介護付き有料老人ホーム</option>
+            <option>住宅型有料老人ホーム</option>
+            <option>グループホーム</option>
+            <option>サービス付き高齢者向け住宅</option>
+            <option>その他</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">住所</label>
+          <input id="editFacilityAddress" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">電話番号</label>
+          <input id="editFacilityPhone" type="tel" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">見学日</label>
+          <input id="editFacilityDate" type="date" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+        </div>
+        <button onclick="updateFacility()" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2.5 rounded-lg transition">保存</button>
+        <button onclick="deleteFacility()" class="w-full bg-red-100 hover:bg-red-200 text-red-600 font-bold py-2.5 rounded-lg transition">この施設を削除</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const EVAL_ITEMS = [
+  { key: 'insulin',        label: 'インシュリン可否',        icon: '💉', hint: 'インシュリン注射の対応可否・条件' },
+  { key: 'monthly_fee',    label: '月額費用',               icon: '💴', hint: '月額の目安（介護保険自己負担含む）' },
+  { key: 'initial_fee',    label: '入居金・初期費用',        icon: '💰', hint: '入居一時金や保証金' },
+  { key: 'insurance_extra',label: '介護保険外の料金',        icon: '📋', hint: '保険適用外サービスの費用' },
+  { key: 'atmosphere',     label: '見学時の雰囲気',          icon: '🌸', hint: '施設全体の清潔感・明るさ・においなど' },
+  { key: 'staff',          label: '職員の対応',              icon: '👩‍⚕️', hint: '親切さ・丁寧さ・コミュニケーション' },
+  { key: 'vacancy',        label: '空き状況',                icon: '🛏', hint: '現在の空き・待機の状況' },
+  { key: 'medical',        label: '医療体制',                icon: '🏥', hint: '看護師の配置・協力医療機関・緊急対応' },
+  { key: 'meal',           label: '食事内容',                icon: '🍱', hint: '食事の質・対応（刻み食・経管など）' },
+  { key: 'outing',         label: '外出・面会の制限',        icon: '🚪', hint: '面会時間・外出規制・コロナ対応など' },
+  { key: 'care_manager',   label: 'ケアマネージャーの選択',  icon: '📝', hint: '施設指定か自由選択か' },
+  { key: 'move_out',       label: '退去の要件',              icon: '📤', hint: '医療依存度・認知症進行時の対応' },
+];
+
+let currentUser = null;
+let currentFacilityId = null;
+let facilities = [];
+let pendingEvals = {};
+
+async function apiFetch(url, opts = {}) {
+  const res = await fetch(url, { ...opts, headers: { 'Content-Type': 'application/json', ...opts.headers } });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'エラーが発生しました');
+  return data;
+}
+
+async function login() {
+  const name = document.getElementById('loginName').value;
+  document.getElementById('loginError').classList.add('hidden');
+  if (!name) { document.getElementById('loginError').classList.remove('hidden'); return; }
+  try {
+    const data = await apiFetch('/api/login', { method: 'POST', body: JSON.stringify({ name }) });
+    currentUser = data.user;
+    showMain();
+  } catch {
+    document.getElementById('loginError').classList.remove('hidden');
+  }
+}
+
+
+async function logout() {
+  await apiFetch('/api/logout', { method: 'POST' });
+  currentUser = null;
+  document.getElementById('mainScreen').classList.add('hidden');
+  document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('loginPin').value = '';
+}
+
+async function showMain() {
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('mainScreen').classList.remove('hidden');
+  document.getElementById('headerUserName').textContent = currentUser.name;
+  if (currentUser.role === 'family') {
+    document.getElementById('addFacilityBtn').classList.remove('hidden');
+  }
+  await loadFacilities();
+  showList();
+}
+
+async function loadFacilities() {
+  facilities = await apiFetch('/api/facilities');
+}
+
+function showList() {
+  ['addFacilityView','detailView','editFacilityView','allCompareView'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  document.getElementById('listView').classList.remove('hidden');
+  renderFacilitiesList();
+}
+
+async function showAllCompare() {
+  ['listView','addFacilityView','detailView','editFacilityView'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  document.getElementById('allCompareView').classList.remove('hidden');
+  document.getElementById('allCompareTable').innerHTML = '<div class="text-center text-gray-400 py-8">読み込み中...</div>';
+
+  // 全施設の評価を取得
+  const allEvals = {};
+  for (const f of facilities) {
+    const evals = await apiFetch(`/api/facilities/${f.id}/evaluations`);
+    allEvals[f.id] = {};
+    evals.forEach(e => {
+      if (!allEvals[f.id][e.item_key]) allEvals[f.id][e.item_key] = [];
+      allEvals[f.id][e.item_key].push(e);
+    });
+  }
+
+  if (facilities.length === 0) {
+    document.getElementById('allCompareTable').innerHTML = '<p class="text-center text-gray-400 py-8">施設が登録されていません</p>';
+    return;
+  }
+
+  // 平均評価を計算
+  function avgRating(evals) {
+    const rated = evals.filter(e => e.rating);
+    if (!rated.length) return null;
+    return rated.reduce((s, e) => s + e.rating, 0) / rated.length;
+  }
+
+  function renderStars(avg) {
+    if (avg === null) return '<span class="text-gray-300 text-sm">未評価</span>';
+    const full = Math.round(avg);
+    return '<span class="text-yellow-400">' + '★'.repeat(full) + '☆'.repeat(5 - full) + '</span>'
+      + `<span class="text-xs text-gray-400 ml-1">${avg.toFixed(1)}</span>`;
+  }
+
+  const html = `
+    <div class="bg-white rounded-xl shadow overflow-hidden">
+      <table class="w-full text-sm" style="min-width:${120 + facilities.length * 130}px">
+        <thead>
+          <tr class="bg-gray-50 border-b">
+            <th class="text-left px-4 py-3 font-medium text-gray-600 w-36 sticky left-0 bg-gray-50">評価項目</th>
+            ${facilities.map(f => `
+              <th class="px-3 py-3 font-medium text-gray-700 text-center min-w-32">
+                <div class="truncate max-w-32">${escHtml(f.name)}</div>
+                ${f.visit_date ? `<div class="text-xs font-normal text-gray-400">${f.visit_date}</div>` : ''}
+              </th>
+            `).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${EVAL_ITEMS.map((item, idx) => `
+            <tr class="${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} border-b border-gray-100">
+              <td class="px-4 py-3 font-medium text-gray-700 sticky left-0 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}">
+                ${item.icon} ${item.label}
+              </td>
+              ${facilities.map(f => {
+                const evals = allEvals[f.id][item.key] || [];
+                const avg = avgRating(evals);
+                const notes = evals.filter(e => e.note).map(e => `${escHtml(e.user_name)}: ${escHtml(e.note)}`).join('\n');
+                return `<td class="px-3 py-3 text-center">
+                  <div>${renderStars(avg)}</div>
+                  ${notes ? `<div class="text-xs text-gray-500 mt-1 text-left whitespace-pre-wrap">${notes}</div>` : ''}
+                </td>`;
+              }).join('')}
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+    <p class="text-xs text-gray-400 mt-2 text-center">★は家族メンバーの評価の平均値</p>
+  `;
+  document.getElementById('allCompareTable').innerHTML = html;
+}
+
+function renderFacilitiesList() {
+  const container = document.getElementById('facilitiesList');
+  if (facilities.length === 0) {
+    container.innerHTML = `<div class="text-center text-gray-400 py-12">
+      <div class="text-5xl mb-3">🏠</div>
+      <p>まだ施設が登録されていません</p>
+      ${currentUser.role === 'family' ? '<p class="text-sm mt-1">「＋ 施設を追加」から登録しましょう</p>' : ''}
+    </div>`;
+    return;
+  }
+  container.innerHTML = facilities.map(f => `
+    <div class="bg-white rounded-xl shadow hover:shadow-md p-4 flex items-start gap-3 transition">
+      <div class="text-3xl cursor-pointer" onclick="showDetail(${f.id})">🏥</div>
+      <div class="flex-1 min-w-0 cursor-pointer" onclick="showDetail(${f.id})">
+        <div class="font-bold text-gray-800 truncate">${escHtml(f.name)}</div>
+        ${f.facility_type ? `<div class="text-xs text-blue-600 mt-0.5">${escHtml(f.facility_type)}</div>` : ''}
+        ${f.visit_date ? `<div class="text-xs text-gray-400 mt-1">見学日: ${f.visit_date}</div>` : ''}
+        ${f.address ? `<div class="text-xs text-gray-400 truncate">${escHtml(f.address)}</div>` : ''}
+      </div>
+      ${currentUser.role === 'family' ? `
+        <button onclick="deleteFacilityFromList(${f.id}, '${escHtml(f.name)}')" class="text-gray-300 hover:text-red-400 text-xl px-1 transition" title="削除">🗑</button>
+      ` : `<div class="text-gray-300 text-xl">›</div>`}
+    </div>
+  `).join('');
+}
+
+function showAddFacility() {
+  ['listView','detailView','editFacilityView'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  document.getElementById('addFacilityView').classList.remove('hidden');
+}
+
+async function addFacility() {
+  const name = document.getElementById('newFacilityName').value.trim();
+  if (!name) { alert('施設名を入力してください'); return; }
+  await apiFetch('/api/facilities', {
+    method: 'POST',
+    body: JSON.stringify({
+      name,
+      facility_type: document.getElementById('newFacilityType').value,
+      address: document.getElementById('newFacilityAddress').value,
+      phone: document.getElementById('newFacilityPhone').value,
+      visit_date: document.getElementById('newFacilityDate').value,
+    })
+  });
+  ['newFacilityName','newFacilityAddress','newFacilityPhone','newFacilityDate'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('newFacilityType').value = '';
+  await loadFacilities();
+  showList();
+}
+
+async function showDetail(facilityId) {
+  currentFacilityId = facilityId;
+  const f = facilities.find(x => x.id === facilityId);
+  ['listView','addFacilityView','editFacilityView'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  document.getElementById('detailView').classList.remove('hidden');
+
+  document.getElementById('detailName').textContent = f.name;
+  document.getElementById('detailType').textContent = f.facility_type || '';
+  document.getElementById('detailAddress').textContent = f.address ? '📍 ' + f.address : '';
+  document.getElementById('detailPhone').textContent = f.phone ? '📞 ' + f.phone : '';
+  document.getElementById('detailDate').textContent = f.visit_date ? '📅 見学日: ' + f.visit_date : '';
+
+  if (currentUser.role === 'family') {
+    document.getElementById('editFacilityBtn').classList.remove('hidden');
+    document.getElementById('saveEvalBtn').classList.remove('hidden');
+  }
+
+  switchTab('eval');
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  ['tabEval','tabCompare','tabComment'].forEach(id => document.getElementById(id).classList.add('hidden'));
+
+  if (tab === 'eval') {
+    document.getElementById('tabEval').classList.remove('hidden');
+    loadEvalForm();
+  } else if (tab === 'compare') {
+    document.getElementById('tabCompare').classList.remove('hidden');
+    loadCompare();
+  } else if (tab === 'comment') {
+    document.getElementById('tabComment').classList.remove('hidden');
+    loadComments();
+  }
+}
+
+async function loadEvalForm() {
+  const evals = await apiFetch(`/api/facilities/${currentFacilityId}/evaluations`);
+  const myEvals = {};
+  evals.filter(e => e.user_id === currentUser.id).forEach(e => {
+    myEvals[e.item_key] = { rating: e.rating, note: e.note };
+  });
+  pendingEvals = { ...myEvals };
+
+  const container = document.getElementById('evalForm');
+  if (currentUser.role === 'family') {
+    container.innerHTML = EVAL_ITEMS.map(item => {
+      const cur = myEvals[item.key] || {};
+      return `
+        <div class="bg-white rounded-xl shadow p-4">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="text-xl">${item.icon}</span>
+            <span class="font-bold text-gray-800">${item.label}</span>
+          </div>
+          <p class="text-xs text-gray-400 mb-2">${item.hint}</p>
+          <div class="flex gap-1 mb-2" id="stars_${item.key}">
+            ${[1,2,3,4,5].map(n => `
+              <span class="star ${cur.rating >= n ? 'active' : ''}" onclick="setStar('${item.key}', ${n})">★</span>
+            `).join('')}
+          </div>
+          <textarea id="note_${item.key}" rows="2" placeholder="メモ（任意）"
+            class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-300 resize-none"
+            oninput="pendingEvals['${item.key}'] = pendingEvals['${item.key}'] || {}; pendingEvals['${item.key}'].note = this.value"
+          >${escHtml(cur.note || '')}</textarea>
+        </div>
+      `;
+    }).join('');
+  } else {
+    // ケアマネは閲覧のみ
+    const allEvals = {};
+    evals.forEach(e => {
+      if (!allEvals[e.item_key]) allEvals[e.item_key] = [];
+      allEvals[e.item_key].push(e);
+    });
+    container.innerHTML = EVAL_ITEMS.map(item => {
+      const itemEvals = allEvals[item.key] || [];
+      return `
+        <div class="bg-white rounded-xl shadow p-4">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-xl">${item.icon}</span>
+            <span class="font-bold text-gray-800">${item.label}</span>
+          </div>
+          ${itemEvals.length === 0 ? '<p class="text-sm text-gray-400">まだ評価がありません</p>' :
+            itemEvals.map(e => `
+              <div class="mb-2 pl-2 border-l-2 border-blue-100">
+                <div class="text-xs font-medium text-blue-600">${escHtml(e.user_name)}</div>
+                <div class="text-yellow-400">${e.rating ? '★'.repeat(e.rating) + '☆'.repeat(5 - e.rating) : '（評価なし）'}</div>
+                ${e.note ? `<div class="text-sm text-gray-600 mt-0.5">${escHtml(e.note)}</div>` : ''}
+              </div>
+            `).join('')
+          }
+        </div>
+      `;
+    }).join('');
+  }
+}
+
+function setStar(itemKey, rating) {
+  if (!pendingEvals[itemKey]) pendingEvals[itemKey] = {};
+  pendingEvals[itemKey].rating = rating;
+  const stars = document.querySelectorAll(`#stars_${itemKey} .star`);
+  stars.forEach((s, i) => s.classList.toggle('active', i < rating));
+}
+
+async function saveAllEvals() {
+  for (const [item_key, val] of Object.entries(pendingEvals)) {
+    await apiFetch(`/api/facilities/${currentFacilityId}/evaluations`, {
+      method: 'POST',
+      body: JSON.stringify({ item_key, rating: val.rating || null, note: val.note || '' })
+    });
+  }
+  alert('保存しました');
+}
+
+async function loadCompare() {
+  const evals = await apiFetch(`/api/facilities/${currentFacilityId}/evaluations`);
+  const users = await apiFetch('/api/users');
+  const familyUsers = users.filter(u => u.role === 'family');
+
+  const byUserItem = {};
+  evals.forEach(e => {
+    const key = `${e.user_id}_${e.item_key}`;
+    byUserItem[key] = e;
+  });
+
+  const html = `
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-gray-50">
+            <th class="text-left px-3 py-2 font-medium text-gray-600 w-32">項目</th>
+            ${familyUsers.map(u => `<th class="px-3 py-2 font-medium text-gray-600">${escHtml(u.name)}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${EVAL_ITEMS.map(item => `
+            <tr class="border-t border-gray-100">
+              <td class="px-3 py-2 text-gray-700">${item.icon} ${item.label}</td>
+              ${familyUsers.map(u => {
+                const e = byUserItem[`${u.id}_${item.key}`];
+                if (!e) return `<td class="px-3 py-2 text-center text-gray-300">-</td>`;
+                return `<td class="px-3 py-2 text-center">
+                  <div class="text-yellow-400 text-base">${e.rating ? '★'.repeat(e.rating) : '-'}</div>
+                  ${e.note ? `<div class="text-xs text-gray-500 max-w-24 truncate mx-auto" title="${escHtml(e.note)}">${escHtml(e.note)}</div>` : ''}
+                </td>`;
+              }).join('')}
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+  document.getElementById('compareTable').innerHTML = html;
+}
+
+async function loadComments() {
+  const comments = await apiFetch(`/api/facilities/${currentFacilityId}/comments`);
+  const container = document.getElementById('commentsList');
+  if (comments.length === 0) {
+    container.innerHTML = '<p class="text-center text-gray-400 py-4">まだコメントがありません</p>';
+    return;
+  }
+  container.innerHTML = comments.map(c => `
+    <div class="bg-white rounded-xl shadow p-4">
+      <div class="flex justify-between items-center mb-1">
+        <div class="flex items-center gap-2">
+          <span class="text-sm font-bold ${c.user_role === 'caregiver' ? 'text-purple-600' : 'text-blue-600'}">${escHtml(c.user_name)}</span>
+          ${c.user_role === 'caregiver' ? '<span class="text-xs bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded">ケアマネ</span>' : ''}
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-gray-400">${c.created_at}</span>
+          ${c.user_id === currentUser.id ? `<button onclick="deleteComment(${c.id})" class="text-xs text-gray-300 hover:text-red-400">削除</button>` : ''}
+        </div>
+      </div>
+      <p class="text-sm text-gray-700 whitespace-pre-wrap">${escHtml(c.body)}</p>
+    </div>
+  `).join('');
+}
+
+async function addComment() {
+  const body = document.getElementById('commentInput').value.trim();
+  if (!body) return;
+  await apiFetch(`/api/facilities/${currentFacilityId}/comments`, {
+    method: 'POST',
+    body: JSON.stringify({ body })
+  });
+  document.getElementById('commentInput').value = '';
+  await loadComments();
+}
+
+async function deleteComment(id) {
+  if (!confirm('このコメントを削除しますか？')) return;
+  await apiFetch(`/api/comments/${id}`, { method: 'DELETE' });
+  await loadComments();
+}
+
+function showEditFacility() {
+  const f = facilities.find(x => x.id === currentFacilityId);
+  ['listView','addFacilityView','detailView'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  document.getElementById('editFacilityView').classList.remove('hidden');
+  document.getElementById('editFacilityName').value = f.name;
+  document.getElementById('editFacilityType').value = f.facility_type || '';
+  document.getElementById('editFacilityAddress').value = f.address || '';
+  document.getElementById('editFacilityPhone').value = f.phone || '';
+  document.getElementById('editFacilityDate').value = f.visit_date || '';
+}
+
+async function updateFacility() {
+  const name = document.getElementById('editFacilityName').value.trim();
+  if (!name) { alert('施設名を入力してください'); return; }
+  await apiFetch(`/api/facilities/${currentFacilityId}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      name,
+      facility_type: document.getElementById('editFacilityType').value,
+      address: document.getElementById('editFacilityAddress').value,
+      phone: document.getElementById('editFacilityPhone').value,
+      visit_date: document.getElementById('editFacilityDate').value,
+    })
+  });
+  await loadFacilities();
+  showDetail(currentFacilityId);
+}
+
+async function deleteFacility() {
+  if (!confirm('この施設とすべての評価・コメントを削除しますか？')) return;
+  await apiFetch(`/api/facilities/${currentFacilityId}`, { method: 'DELETE' });
+  await loadFacilities();
+  showList();
+}
+
+async function deleteFacilityFromList(id, name) {
+  if (!confirm(`「${name}」を削除しますか？\n（評価・コメントもすべて削除されます）`)) return;
+  await apiFetch(`/api/facilities/${id}`, { method: 'DELETE' });
+  await loadFacilities();
+  renderFacilitiesList();
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// 起動時にセッション確認
+(async () => {
+  const data = await apiFetch('/api/me');
+  if (data.user) {
+    currentUser = data.user;
+    showMain();
+  }
+})();
+</script>
+</body>
+</html>
