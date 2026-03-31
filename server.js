@@ -1,18 +1,15 @@
 const express = require('express');
 const session = require('express-session');
-const bcrypt = require('bcryptjs');
 const path = require('path');
-const { loadDB, saveDB, initDB, now } = require('./database');
+const { pool, initDB, now } = require('./database');
 
 const app = express();
-const PORT = 3000;
-
-initDB();
+const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(session({
-  secret: 'care-facility-secret-2024',
+  secret: process.env.SESSION_SECRET || 'care-facility-secret-2024',
   resave: false,
   saveUninitialized: false,
   cookie: { maxAge: 24 * 60 * 60 * 1000 }
@@ -30,11 +27,11 @@ function requireFamily(req, res, next) {
 }
 
 // ログイン
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
   const { name } = req.body;
-  const db = loadDB();
-  const user = db.users.find(u => u.name === name);
-  if (!user) return res.status(401).json({ error: '名前が見つかりません' });
+  const { rows } = await pool.query('SELECT * FROM users WHERE name = $1', [name]);
+  if (rows.length === 0) return res.status(401).json({ error: '名前が見つかりません' });
+  const user = rows[0];
   req.session.user = { id: user.id, name: user.name, role: user.role };
   res.json({ user: { id: user.id, name: user.name, role: user.role } });
 });
@@ -52,143 +49,126 @@ app.get('/api/me', (req, res) => {
 });
 
 // ユーザー一覧
-app.get('/api/users', requireAuth, (req, res) => {
-  const db = loadDB();
-  res.json(db.users.map(u => ({ id: u.id, name: u.name, role: u.role })));
+app.get('/api/users', requireAuth, async (req, res) => {
+  const { rows } = await pool.query('SELECT id, name, role FROM users ORDER BY id');
+  res.json(rows);
 });
 
 // 施設一覧
-app.get('/api/facilities', requireAuth, (req, res) => {
-  const db = loadDB();
-  const result = db.facilities
-    .slice()
-    .sort((a, b) => b.created_at.localeCompare(a.created_at))
-    .map(f => {
-      const creator = db.users.find(u => u.id === f.created_by);
-      return { ...f, created_by_name: creator ? creator.name : '' };
-    });
-  res.json(result);
+app.get('/api/facilities', requireAuth, async (req, res) => {
+  const { rows } = await pool.query(`
+    SELECT f.*, u.name as created_by_name
+    FROM facilities f
+    LEFT JOIN users u ON f.created_by = u.id
+    ORDER BY f.id DESC
+  `);
+  res.json(rows);
 });
 
 // 施設追加
-app.post('/api/facilities', requireFamily, (req, res) => {
+app.post('/api/facilities', requireFamily, async (req, res) => {
   const { name, address, phone, visit_date, facility_type } = req.body;
   if (!name) return res.status(400).json({ error: '施設名は必須です' });
-  const db = loadDB();
-  const facility = {
-    id: db.nextId.facility++,
-    name, address: address || '', phone: phone || '',
-    visit_date: visit_date || '', facility_type: facility_type || '',
-    created_by: req.session.user.id,
-    created_at: now()
-  };
-  db.facilities.push(facility);
-  saveDB(db);
-  res.json(facility);
+  const { rows } = await pool.query(
+    'INSERT INTO facilities (name, address, phone, visit_date, facility_type, created_by, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+    [name, address || '', phone || '', visit_date || '', facility_type || '', req.session.user.id, now()]
+  );
+  res.json(rows[0]);
 });
 
 // 施設更新
-app.put('/api/facilities/:id', requireFamily, (req, res) => {
+app.put('/api/facilities/:id', requireFamily, async (req, res) => {
   const id = parseInt(req.params.id);
   const { name, address, phone, visit_date, facility_type } = req.body;
-  const db = loadDB();
-  const idx = db.facilities.findIndex(f => f.id === id);
-  if (idx === -1) return res.status(404).json({ error: '見つかりません' });
-  db.facilities[idx] = { ...db.facilities[idx], name, address: address || '', phone: phone || '', visit_date: visit_date || '', facility_type: facility_type || '' };
-  saveDB(db);
-  res.json(db.facilities[idx]);
+  const { rows } = await pool.query(
+    'UPDATE facilities SET name=$1, address=$2, phone=$3, visit_date=$4, facility_type=$5 WHERE id=$6 RETURNING *',
+    [name, address || '', phone || '', visit_date || '', facility_type || '', id]
+  );
+  if (rows.length === 0) return res.status(404).json({ error: '見つかりません' });
+  res.json(rows[0]);
 });
 
 // 施設削除
-app.delete('/api/facilities/:id', requireFamily, (req, res) => {
+app.delete('/api/facilities/:id', requireFamily, async (req, res) => {
   const id = parseInt(req.params.id);
-  const db = loadDB();
-  db.facilities = db.facilities.filter(f => f.id !== id);
-  db.evaluations = db.evaluations.filter(e => e.facility_id !== id);
-  db.comments = db.comments.filter(c => c.facility_id !== id);
-  saveDB(db);
+  await pool.query('DELETE FROM facilities WHERE id = $1', [id]);
   res.json({ ok: true });
 });
 
 // 評価一覧
-app.get('/api/facilities/:id/evaluations', requireAuth, (req, res) => {
+app.get('/api/facilities/:id/evaluations', requireAuth, async (req, res) => {
   const id = parseInt(req.params.id);
-  const db = loadDB();
-  const result = db.evaluations
-    .filter(e => e.facility_id === id)
-    .map(e => {
-      const user = db.users.find(u => u.id === e.user_id);
-      return { ...e, user_name: user ? user.name : '' };
-    });
-  res.json(result);
+  const { rows } = await pool.query(`
+    SELECT e.*, u.name as user_name
+    FROM evaluations e
+    LEFT JOIN users u ON e.user_id = u.id
+    WHERE e.facility_id = $1
+  `, [id]);
+  res.json(rows);
 });
 
 // 評価を保存（upsert）
-app.post('/api/facilities/:id/evaluations', requireFamily, (req, res) => {
+app.post('/api/facilities/:id/evaluations', requireFamily, async (req, res) => {
   const facility_id = parseInt(req.params.id);
   const { item_key, rating, note } = req.body;
   const user_id = req.session.user.id;
-  const db = loadDB();
-  const idx = db.evaluations.findIndex(e => e.facility_id === facility_id && e.user_id === user_id && e.item_key === item_key);
-  if (idx !== -1) {
-    db.evaluations[idx] = { ...db.evaluations[idx], rating: rating || null, note: note || '', updated_at: now() };
-  } else {
-    db.evaluations.push({ id: db.nextId.evaluation++, facility_id, user_id, item_key, rating: rating || null, note: note || '', updated_at: now() });
-  }
-  saveDB(db);
+  await pool.query(`
+    INSERT INTO evaluations (facility_id, user_id, item_key, rating, note, updated_at)
+    VALUES ($1, $2, $3, $4, $5, $6)
+    ON CONFLICT (facility_id, user_id, item_key)
+    DO UPDATE SET rating=$4, note=$5, updated_at=$6
+  `, [facility_id, user_id, item_key, rating || null, note || '', now()]);
   res.json({ ok: true });
 });
 
 // コメント一覧
-app.get('/api/facilities/:id/comments', requireAuth, (req, res) => {
+app.get('/api/facilities/:id/comments', requireAuth, async (req, res) => {
   const id = parseInt(req.params.id);
-  const db = loadDB();
-  const result = db.comments
-    .filter(c => c.facility_id === id)
-    .sort((a, b) => a.created_at.localeCompare(b.created_at))
-    .map(c => {
-      const user = db.users.find(u => u.id === c.user_id);
-      return { ...c, user_name: user ? user.name : '', user_role: user ? user.role : '' };
-    });
-  res.json(result);
+  const { rows } = await pool.query(`
+    SELECT c.*, u.name as user_name, u.role as user_role
+    FROM comments c
+    LEFT JOIN users u ON c.user_id = u.id
+    WHERE c.facility_id = $1
+    ORDER BY c.created_at ASC
+  `, [id]);
+  res.json(rows);
 });
 
 // コメント追加
-app.post('/api/facilities/:id/comments', requireAuth, (req, res) => {
+app.post('/api/facilities/:id/comments', requireAuth, async (req, res) => {
   const facility_id = parseInt(req.params.id);
   const { body } = req.body;
   if (!body || !body.trim()) return res.status(400).json({ error: 'コメントを入力してください' });
-  const db = loadDB();
-  const comment = {
-    id: db.nextId.comment++,
-    facility_id,
-    user_id: req.session.user.id,
-    body: body.trim(),
-    created_at: now()
-  };
-  db.comments.push(comment);
-  saveDB(db);
-  const user = db.users.find(u => u.id === req.session.user.id);
-  res.json({ ...comment, user_name: user ? user.name : '', user_role: user ? user.role : '' });
+  const { rows } = await pool.query(
+    'INSERT INTO comments (facility_id, user_id, body, created_at) VALUES ($1, $2, $3, $4) RETURNING *',
+    [facility_id, req.session.user.id, body.trim(), now()]
+  );
+  const comment = rows[0];
+  const userResult = await pool.query('SELECT name, role FROM users WHERE id = $1', [req.session.user.id]);
+  const user = userResult.rows[0];
+  res.json({ ...comment, user_name: user.name, user_role: user.role });
 });
 
 // コメント削除
-app.delete('/api/comments/:id', requireAuth, (req, res) => {
+app.delete('/api/comments/:id', requireAuth, async (req, res) => {
   const id = parseInt(req.params.id);
-  const db = loadDB();
-  const comment = db.comments.find(c => c.id === id);
-  if (!comment) return res.status(404).json({ error: '見つかりません' });
-  if (comment.user_id !== req.session.user.id) return res.status(403).json({ error: '権限がありません' });
-  db.comments = db.comments.filter(c => c.id !== id);
-  saveDB(db);
+  const { rows } = await pool.query('SELECT * FROM comments WHERE id = $1', [id]);
+  if (rows.length === 0) return res.status(404).json({ error: '見つかりません' });
+  if (rows[0].user_id !== req.session.user.id) return res.status(403).json({ error: '権限がありません' });
+  await pool.query('DELETE FROM comments WHERE id = $1', [id]);
   res.json({ ok: true });
 });
 
-app.listen(PORT, () => {
-  console.log(`\nサーバー起動中: http://localhost:${PORT}\n`);
-  console.log('初期ログイン情報:');
-  console.log('  名前: 長男          PIN: 1111');
-  console.log('  名前: 次男          PIN: 2222');
-  console.log('  名前: 長女          PIN: 3333');
-  console.log('  名前: ケアマネージャー  PIN: 9999');
+initDB().then(() => {
+  app.listen(PORT, () => {
+    console.log(`\nサーバー起動中: http://localhost:${PORT}\n`);
+    console.log('初期ログイン情報:');
+    console.log('  名前: 長男');
+    console.log('  名前: 次男');
+    console.log('  名前: 長女');
+    console.log('  名前: ケアマネージャー');
+  });
+}).catch(err => {
+  console.error('DB初期化エラー:', err);
+  process.exit(1);
 });

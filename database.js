@@ -1,44 +1,77 @@
-const fs = require('fs');
-const path = require('path');
+const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 
-const DB_FILE = path.join(__dirname, 'careapp.json');
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
 
-function loadDB() {
-  if (!fs.existsSync(DB_FILE)) return null;
-  return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
-}
+async function initDB() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL UNIQUE,
+      pin TEXT NOT NULL,
+      role TEXT NOT NULL
+    )
+  `);
 
-function saveDB(data) {
-  fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
-}
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS facilities (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      address TEXT DEFAULT '',
+      phone TEXT DEFAULT '',
+      visit_date TEXT DEFAULT '',
+      facility_type TEXT DEFAULT '',
+      created_by INTEGER REFERENCES users(id),
+      created_at TEXT NOT NULL
+    )
+  `);
 
-function initDB() {
-  let data = loadDB();
-  if (data) return data;
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS evaluations (
+      id SERIAL PRIMARY KEY,
+      facility_id INTEGER REFERENCES facilities(id) ON DELETE CASCADE,
+      user_id INTEGER REFERENCES users(id),
+      item_key TEXT NOT NULL,
+      rating INTEGER,
+      note TEXT DEFAULT '',
+      updated_at TEXT NOT NULL,
+      UNIQUE(facility_id, user_id, item_key)
+    )
+  `);
 
-  data = {
-    users: [],
-    facilities: [],
-    evaluations: [],
-    comments: [],
-    nextId: { user: 1, facility: 1, evaluation: 1, comment: 1 }
-  };
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS comments (
+      id SERIAL PRIMARY KEY,
+      facility_id INTEGER REFERENCES facilities(id) ON DELETE CASCADE,
+      user_id INTEGER REFERENCES users(id),
+      body TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    )
+  `);
 
-  // 初期ユーザー
-  data.users.push({ id: 1, name: '長男',          pin: bcrypt.hashSync('1111', 10), role: 'family' });
-  data.users.push({ id: 2, name: '次男',          pin: bcrypt.hashSync('2222', 10), role: 'family' });
-  data.users.push({ id: 3, name: '長女',          pin: bcrypt.hashSync('3333', 10), role: 'family' });
-  data.users.push({ id: 4, name: 'ケアマネージャー', pin: bcrypt.hashSync('9999', 10), role: 'caregiver' });
-  data.nextId.user = 5;
-
-  saveDB(data);
-  console.log('データベースを初期化しました');
-  return data;
+  const { rows } = await pool.query('SELECT COUNT(*) as count FROM users');
+  if (parseInt(rows[0].count) === 0) {
+    const users = [
+      { name: '長男',           pin: '1111', role: 'family' },
+      { name: '次男',           pin: '2222', role: 'family' },
+      { name: '長女',           pin: '3333', role: 'family' },
+      { name: 'ケアマネージャー', pin: '9999', role: 'caregiver' },
+    ];
+    for (const u of users) {
+      await pool.query(
+        'INSERT INTO users (name, pin, role) VALUES ($1, $2, $3)',
+        [u.name, bcrypt.hashSync(u.pin, 10), u.role]
+      );
+    }
+    console.log('初期ユーザーを作成しました');
+  }
 }
 
 function now() {
   return new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' });
 }
 
-module.exports = { loadDB, saveDB, initDB, now };
+module.exports = { pool, initDB, now };
