@@ -18,7 +18,7 @@
 <div id="loginScreen" class="min-h-screen flex items-center justify-center p-4">
   <div class="bg-white rounded-2xl shadow-lg p-8 w-full max-w-sm">
     <div class="text-center mb-6">
-      <div class="text-5xl mb-3">🏠</div>
+      <div class="text-5xl mb-3">👨‍👩‍👧</div>
       <h1 class="text-2xl font-bold text-gray-800">見守りノート</h1>
       <p class="text-gray-500 text-sm mt-1">家族みんなで、大切な人の毎日に寄り添う</p>
     </div>
@@ -45,7 +45,7 @@
   <header class="bg-white shadow-sm sticky top-0 z-10">
     <div class="max-w-4xl mx-auto px-4 py-3 flex justify-between items-center">
       <div class="flex items-center gap-2">
-        <span class="text-2xl">🏠</span>
+        <span class="text-2xl">👨‍👩‍👧</span>
         <span class="font-bold text-gray-800">見守りノート</span>
       </div>
       <div class="flex items-center gap-3">
@@ -450,7 +450,7 @@ function renderFacilitiesList() {
   const container = document.getElementById('facilitiesList');
   if (facilities.length === 0) {
     container.innerHTML = `<div class="text-center text-gray-400 py-12">
-      <div class="text-5xl mb-3">🏠</div>
+      <div class="text-5xl mb-3">👨‍👩‍👧</div>
       <p>まだ施設が登録されていません</p>
       ${currentUser.role === 'family' ? '<p class="text-sm mt-1">「＋ 施設を追加」から登録しましょう</p>' : ''}
     </div>`;
