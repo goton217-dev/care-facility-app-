@@ -52,6 +52,22 @@ async function initDB() {
     )
   `);
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS vitals (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id),
+      recorded_date TEXT NOT NULL,
+      temperature NUMERIC(4,1),
+      bp_systolic INTEGER,
+      bp_diastolic INTEGER,
+      pulse INTEGER,
+      spo2 INTEGER,
+      weight NUMERIC(4,1),
+      note TEXT DEFAULT '',
+      created_at TEXT NOT NULL
+    )
+  `);
+
   const { rows } = await pool.query('SELECT COUNT(*) as count FROM users');
   if (parseInt(rows[0].count) === 0) {
     const users = [

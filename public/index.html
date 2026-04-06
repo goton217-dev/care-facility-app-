@@ -157,6 +157,7 @@
         <button class="tab-btn active px-4 py-2 text-sm" onclick="switchTab('eval')">評価シート</button>
         <button class="tab-btn px-4 py-2 text-sm" onclick="switchTab('compare')">メンバー比較</button>
         <button class="tab-btn px-4 py-2 text-sm" onclick="switchTab('comment')">コメント</button>
+        <button class="tab-btn px-4 py-2 text-sm" onclick="switchTab('vital')">バイタル</button>
       </div>
 
       <!-- 評価シートタブ -->
@@ -182,6 +183,60 @@
             コメントを投稿
           </button>
         </div>
+      </div>
+
+      <!-- バイタルタブ -->
+      <div id="tabVital" class="hidden">
+        <div id="vitalFormWrap" class="bg-white rounded-xl shadow p-4 mb-4 hidden">
+          <h3 class="font-bold text-gray-700 mb-3">バイタルを記録</h3>
+          <div class="space-y-3">
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">記録日 <span class="text-red-500">*</span></label>
+              <input id="vitalDate" type="date" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">体温 (℃)</label>
+                <input id="vitalTemp" type="number" step="0.1" min="34" max="42" placeholder="36.5"
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">脈拍 (回/分)</label>
+                <input id="vitalPulse" type="number" min="30" max="200" placeholder="72"
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">血圧 収縮期 (mmHg)</label>
+                <input id="vitalBpS" type="number" min="60" max="250" placeholder="120"
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">血圧 拡張期 (mmHg)</label>
+                <input id="vitalBpD" type="number" min="40" max="150" placeholder="80"
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">SpO2 (%)</label>
+                <input id="vitalSpo2" type="number" min="80" max="100" placeholder="98"
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">体重 (kg)</label>
+                <input id="vitalWeight" type="number" step="0.1" min="20" max="200" placeholder="55.0"
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">メモ</label>
+              <textarea id="vitalNote" rows="2" placeholder="気になることがあれば..."
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"></textarea>
+            </div>
+            <button onclick="addVital()" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 rounded-lg text-sm transition">
+              記録する
+            </button>
+          </div>
+        </div>
+        <div id="vitalsList" class="space-y-3"></div>
       </div>
     </div>
 
@@ -447,7 +502,7 @@ async function showDetail(facilityId) {
 function switchTab(tab) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   event.target.classList.add('active');
-  ['tabEval','tabCompare','tabComment'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  ['tabEval','tabCompare','tabComment','tabVital'].forEach(id => document.getElementById(id).classList.add('hidden'));
 
   if (tab === 'eval') {
     document.getElementById('tabEval').classList.remove('hidden');
@@ -458,6 +513,13 @@ function switchTab(tab) {
   } else if (tab === 'comment') {
     document.getElementById('tabComment').classList.remove('hidden');
     loadComments();
+  } else if (tab === 'vital') {
+    document.getElementById('tabVital').classList.remove('hidden');
+    if (currentUser.role === 'family') {
+      document.getElementById('vitalFormWrap').classList.remove('hidden');
+      document.getElementById('vitalDate').value = new Date().toISOString().split('T')[0];
+    }
+    loadVitals();
   }
 }
 
@@ -661,6 +723,65 @@ async function deleteFacilityFromList(id, name) {
   await apiFetch(`/api/facilities/${id}`, { method: 'DELETE' });
   await loadFacilities();
   renderFacilitiesList();
+}
+
+async function loadVitals() {
+  const vitals = await apiFetch('/api/vitals');
+  const container = document.getElementById('vitalsList');
+  if (vitals.length === 0) {
+    container.innerHTML = '<p class="text-center text-gray-400 py-4">まだ記録がありません</p>';
+    return;
+  }
+  container.innerHTML = vitals.map(v => {
+    const items = [];
+    if (v.temperature) items.push(`🌡️ 体温: <b>${v.temperature}℃</b>`);
+    if (v.bp_systolic && v.bp_diastolic) items.push(`💉 血圧: <b>${v.bp_systolic}/${v.bp_diastolic} mmHg</b>`);
+    if (v.pulse) items.push(`❤️ 脈拍: <b>${v.pulse}回/分</b>`);
+    if (v.spo2) items.push(`🫁 SpO2: <b>${v.spo2}%</b>`);
+    if (v.weight) items.push(`⚖️ 体重: <b>${v.weight}kg</b>`);
+    return `
+      <div class="bg-white rounded-xl shadow p-4">
+        <div class="flex justify-between items-center mb-2">
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-gray-800">${escHtml(v.recorded_date)}</span>
+            <span class="text-xs text-blue-600">${escHtml(v.user_name)}</span>
+          </div>
+          ${v.user_id === currentUser.id ? `<button onclick="deleteVital(${v.id})" class="text-xs text-gray-300 hover:text-red-400">削除</button>` : ''}
+        </div>
+        <div class="grid grid-cols-2 gap-1 text-sm text-gray-700">
+          ${items.map(i => `<div>${i}</div>`).join('')}
+        </div>
+        ${v.note ? `<p class="text-xs text-gray-500 mt-2 border-t pt-2">${escHtml(v.note)}</p>` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+async function addVital() {
+  const recorded_date = document.getElementById('vitalDate').value;
+  if (!recorded_date) { alert('記録日を選択してください'); return; }
+  const temperature = document.getElementById('vitalTemp').value;
+  const bp_systolic = document.getElementById('vitalBpS').value;
+  const bp_diastolic = document.getElementById('vitalBpD').value;
+  const pulse = document.getElementById('vitalPulse').value;
+  const spo2 = document.getElementById('vitalSpo2').value;
+  const weight = document.getElementById('vitalWeight').value;
+  const note = document.getElementById('vitalNote').value;
+  if (!temperature && !bp_systolic && !pulse && !spo2 && !weight) {
+    alert('少なくとも1つの項目を入力してください'); return;
+  }
+  await apiFetch('/api/vitals', {
+    method: 'POST',
+    body: JSON.stringify({ recorded_date, temperature, bp_systolic, bp_diastolic, pulse, spo2, weight, note })
+  });
+  ['vitalTemp','vitalBpS','vitalBpD','vitalPulse','vitalSpo2','vitalWeight','vitalNote'].forEach(id => document.getElementById(id).value = '');
+  await loadVitals();
+}
+
+async function deleteVital(id) {
+  if (!confirm('この記録を削除しますか？')) return;
+  await apiFetch(`/api/vitals/${id}`, { method: 'DELETE' });
+  await loadVitals();
 }
 
 function escHtml(str) {

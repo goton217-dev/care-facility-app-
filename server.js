@@ -159,6 +159,42 @@ app.delete('/api/comments/:id', requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
+// バイタル一覧
+app.get('/api/vitals', requireAuth, async (req, res) => {
+  const { rows } = await pool.query(`
+    SELECT v.*, u.name as user_name
+    FROM vitals v
+    LEFT JOIN users u ON v.user_id = u.id
+    ORDER BY v.recorded_date DESC, v.created_at DESC
+  `);
+  res.json(rows);
+});
+
+// バイタル追加
+app.post('/api/vitals', requireFamily, async (req, res) => {
+  const { recorded_date, temperature, bp_systolic, bp_diastolic, pulse, spo2, weight, note } = req.body;
+  if (!recorded_date) return res.status(400).json({ error: '記録日は必須です' });
+  const { rows } = await pool.query(
+    `INSERT INTO vitals (user_id, recorded_date, temperature, bp_systolic, bp_diastolic, pulse, spo2, weight, note, created_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+    [req.session.user.id, recorded_date,
+     temperature || null, bp_systolic || null, bp_diastolic || null,
+     pulse || null, spo2 || null, weight || null,
+     note || '', now()]
+  );
+  res.json(rows[0]);
+});
+
+// バイタル削除
+app.delete('/api/vitals/:id', requireFamily, async (req, res) => {
+  const id = parseInt(req.params.id);
+  const { rows } = await pool.query('SELECT * FROM vitals WHERE id = $1', [id]);
+  if (rows.length === 0) return res.status(404).json({ error: '見つかりません' });
+  if (rows[0].user_id !== req.session.user.id) return res.status(403).json({ error: '権限がありません' });
+  await pool.query('DELETE FROM vitals WHERE id = $1', [id]);
+  res.json({ ok: true });
+});
+
 initDB().then(() => {
   app.listen(PORT, () => {
     console.log(`\nサーバー起動中: http://localhost:${PORT}\n`);
