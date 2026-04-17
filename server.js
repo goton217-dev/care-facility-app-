@@ -2,6 +2,9 @@ const express = require('express');
 const session = require('express-session');
 const path = require('path');
 const { pool, initDB, now } = require('./database');
+const Anthropic = require('@anthropic-ai/sdk');
+
+const anthropic = new Anthropic();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -193,6 +196,107 @@ app.delete('/api/vitals/:id', requireFamily, async (req, res) => {
   if (rows[0].user_id !== req.session.user.id) return res.status(403).json({ error: '権限がありません' });
   await pool.query('DELETE FROM vitals WHERE id = $1', [id]);
   res.json({ ok: true });
+});
+
+// 秘書アシスタント
+app.post('/api/assistant', requireAuth, async (req, res) => {
+  const { messages, facilityId } = req.body;
+  if (!messages || !Array.isArray(messages) || messages.length === 0) {
+    return res.status(400).json({ error: 'メッセージが必要です' });
+  }
+
+  try {
+    const { rows: facilities } = await pool.query(`
+      SELECT f.*, u.name as created_by_name
+      FROM facilities f LEFT JOIN users u ON f.created_by = u.id
+      ORDER BY f.id DESC
+    `);
+
+    const evalLabels = {
+      insulin: 'インシュリン対応', monthly_fee: '月額費用',
+      initial_fee: '入居金・初期費用', insurance_extra: '介護保険外料金',
+      atmosphere: '見学時の雰囲気', staff: '職員の対応',
+      vacancy: '空き状況', medical: '医療体制',
+      meal: '食事内容', outing: '外出・面会制限',
+      care_manager: 'ケアマネ選択', move_out: '退去の要件'
+    };
+
+    let system = `あなたは介護施設比較アプリ「見守りノート」のAI秘書アシスタントです。
+高齢の家族の介護施設選びをサポートするため、家族が見学・評価した施設情報をもとに、専門的かつ親切なアドバイスを提供します。
+
+【評価項目の説明】
+インシュリン対応: 施設でインシュリン注射を行えるか
+月額費用: 月々の利用料（介護保険自己負担含む）
+入居金・初期費用: 入居時に必要な一時金
+介護保険外料金: 保険適用外の追加サービス費用
+見学時の雰囲気: 施設の清潔感・明るさ・においなど
+職員の対応: 親切さ・丁寧さ・コミュニケーション力
+空き状況: 現在の空き・入居待ち状況
+医療体制: 看護師配置・協力医療機関・緊急対応
+食事内容: 食事の質・刻み食・経管栄養対応
+外出・面会制限: 面会時間・外出規制
+ケアマネ選択: 施設指定か自由選択か
+退去の要件: 医療依存度・認知症進行時の対応
+
+`;
+
+    if (facilities.length > 0) {
+      system += `【登録施設 ${facilities.length}件】\n`;
+      for (const f of facilities) {
+        system += `・${f.name}（${f.facility_type || '種別未設定'}）`;
+        if (f.visit_date) system += ` 見学日:${f.visit_date}`;
+        if (f.address) system += ` ${f.address}`;
+        system += '\n';
+      }
+      system += '\n';
+    } else {
+      system += '（施設はまだ登録されていません）\n\n';
+    }
+
+    if (facilityId) {
+      const fac = facilities.find(f => f.id === parseInt(facilityId));
+      if (fac) {
+        const { rows: evals } = await pool.query(`
+          SELECT e.*, u.name as user_name
+          FROM evaluations e LEFT JOIN users u ON e.user_id = u.id
+          WHERE e.facility_id = $1
+        `, [fac.id]);
+
+        system += `【現在閲覧中の施設: ${fac.name}】\n`;
+        if (evals.length > 0) {
+          for (const e of evals) {
+            const label = evalLabels[e.item_key] || e.item_key;
+            const stars = e.rating ? '★'.repeat(e.rating) + '☆'.repeat(5 - e.rating) : '未評価';
+            system += `  [${e.user_name}] ${label}: ${stars}`;
+            if (e.note) system += ` / ${e.note}`;
+            system += '\n';
+          }
+        } else {
+          system += '  （評価データなし）\n';
+        }
+        system += '\n';
+      }
+    }
+
+    system += `【現在のユーザー】${req.session.user.name}（${req.session.user.role === 'family' ? '家族' : 'ケアマネージャー'}）\n\n`;
+    system += `簡潔かつ親切に日本語で回答してください。専門用語には補足説明を加えてください。`;
+
+    const recentMessages = messages.slice(-20);
+
+    const response = await anthropic.messages.create({
+      model: 'claude-opus-4-7',
+      max_tokens: 1024,
+      thinking: { type: 'adaptive' },
+      system,
+      messages: recentMessages
+    });
+
+    const textBlock = response.content.find(b => b.type === 'text');
+    res.json({ reply: textBlock?.text || '申し訳ありません、応答を生成できませんでした。' });
+  } catch (err) {
+    console.error('Assistant API error:', err.message);
+    res.status(500).json({ error: 'アシスタントエラーが発生しました' });
+  }
 });
 
 initDB().then(() => {
