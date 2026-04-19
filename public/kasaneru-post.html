@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Kasaneru — 今日の記録</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:            #F6F2EC;
+      --card:          #FFFFFF;
+      --green:         #5A8A58;
+      --green-dark:    #3D6B3B;
+      --green-light:   #EAF2E9;
+      --green-mid:     #88B786;
+      --earth:         #C49A6C;
+      --earth-light:   #F5ECDF;
+      --night:         #252D45;
+      --text:          #3B2F28;
+      --text-mid:      #6E5E55;
+      --text-soft:     #A89F98;
+      --border:        #E5DDD4;
+
+      --good:          #4BAA4B;
+      --good-bg:       #EDF7ED;
+      --good-border:   #B8DEBB;
+      --normal:        #CB9C14;
+      --normal-bg:     #FDF6E3;
+      --normal-border: #F0D98A;
+      --concern:       #D24545;
+      --concern-bg:    #FDECEC;
+      --concern-border:#F0B8B8;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'M PLUS Rounded 1c', 'Hiragino Maru Gothic ProN', 'メイリオ', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      padding-bottom: 110px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── HEADER ────────────────────────── */
+    .header {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 18px 10px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 1px 12px rgba(0,0,0,0.06);
+    }
+
+    .header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-leaf {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, var(--green) 0%, var(--green-mid) 100%);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 2px 8px rgba(90,138,88,0.35);
+      flex-shrink: 0;
+    }
+
+    .logo-text h1 {
+      font-size: 19px;
+      font-weight: 800;
+      color: var(--green-dark);
+      line-height: 1;
+      letter-spacing: 0.3px;
+    }
+
+    .logo-text p {
+      font-size: 10px;
+      color: var(--text-soft);
+      font-weight: 500;
+      margin-top: 2px;
+    }
+
+    .date-chip {
+      background: var(--earth-light);
+      color: var(--earth);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 5px 11px;
+      border-radius: 20px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .progress-bar {
+      height: 5px;
+      background: var(--border);
+      border-radius: 3px;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--green) 0%, var(--earth) 100%);
+      border-radius: 3px;
+      transition: width 0.35s ease;
+      width: 0%;
+    }
+
+    .progress-label {
+      font-size: 10px;
+      color: var(--text-soft);
+      font-weight: 600;
+      text-align: right;
+      margin-top: 4px;
+    }
+
+    /* ── CONTENT ────────────────────────── */
+    .content {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 14px 14px 0;
+    }
+
+    /* ── NIGHT BANNER ───────────────────── */
+    .night-banner {
+      background: linear-gradient(135deg, var(--night) 0%, #1E2740 100%);
+      border-radius: 16px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      margin-bottom: 20px;
+    }
+
+    .night-emoji { font-size: 30px; flex-shrink: 0; }
+
+    .night-text h2 {
+      font-size: 13px;
+      font-weight: 700;
+      color: #FFFFFF;
+      margin-bottom: 3px;
+    }
+
+    .night-text p {
+      font-size: 11px;
+      color: rgba(255,255,255,0.6);
+      line-height: 1.5;
+    }
+
+    /* ── SECTION LABEL ──────────────────── */
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-soft);
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      margin-top: 20px;
+    }
+
+    /* ── CARE GRID ──────────────────────── */
+    .care-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .care-card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 13px 12px 12px;
+      border: 2.5px solid transparent;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+      transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+    }
+
+    .care-card.sel-good    { border-color: var(--good);    background: var(--good-bg);    box-shadow: 0 3px 14px rgba(75,170,75,0.18); }
+    .care-card.sel-normal  { border-color: var(--normal);  background: var(--normal-bg);  box-shadow: 0 3px 14px rgba(203,156,20,0.18); }
+    .care-card.sel-concern { border-color: var(--concern); background: var(--concern-bg); box-shadow: 0 3px 14px rgba(210,69,69,0.18); }
+
+    .card-head {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .card-icon { font-size: 21px; line-height: 1; }
+
+    .card-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .rank-row {
+      display: flex;
+      gap: 5px;
+    }
+
+    .rank-btn {
+      flex: 1;
+      aspect-ratio: 1 / 1;
+      max-height: 46px;
+      border: 2px solid transparent;
+      border-radius: 11px;
+      font-size: 20px;
+      cursor: pointer;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.12s, box-shadow 0.15s, background 0.15s, border-color 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      user-select: none;
+      padding: 0;
+      line-height: 1;
+    }
+
+    .rank-btn:active { transform: scale(0.88); }
+
+    .rank-btn.r-good    { background: #F0FAF0; border-color: var(--good-border); }
+    .rank-btn.r-normal  { background: #FFFBEE; border-color: var(--normal-border); }
+    .rank-btn.r-concern { background: #FFF5F5; border-color: var(--concern-border); }
+
+    .rank-btn.r-good.active    { background: var(--good);    border-color: var(--good);    box-shadow: 0 3px 12px rgba(75,170,75,0.45); }
+    .rank-btn.r-normal.active  { background: var(--normal);  border-color: var(--normal);  box-shadow: 0 3px 12px rgba(203,156,20,0.45); }
+    .rank-btn.r-concern.active { background: var(--concern); border-color: var(--concern); box-shadow: 0 3px 12px rgba(210,69,69,0.45); }
+
+    /* ── EXTRA CARD ─────────────────────── */
+    .extra-card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    }
+
+    .upload-btn {
+      width: 100%;
+      padding: 13px;
+      background: var(--bg);
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-mid);
+      font-family: inherit;
+      transition: border-color 0.2s, color 0.2s, background 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .upload-btn:hover, .upload-btn:active {
+      border-color: var(--green);
+      color: var(--green);
+      background: var(--green-light);
+    }
+
+    .upload-icon { font-size: 22px; }
+
+    #photoInput { display: none; }
+
+    .photo-strip {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 10px 0;
+    }
+
+    .thumb-wrap {
+      position: relative;
+      width: 70px;
+      height: 70px;
+    }
+
+    .thumb-img {
+      width: 100%;
+      height: 100%;
+      border-radius: 10px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .thumb-del {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      width: 20px;
+      height: 20px;
+      background: rgba(30,30,30,0.75);
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      font-size: 11px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      padding: 0;
+      backdrop-filter: blur(2px);
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 14px 0 13px;
+    }
+
+    .comment-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-mid);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .comment-input {
+      width: 100%;
+      background: var(--bg);
+      border: none;
+      border-radius: 12px;
+      padding: 11px 13px;
+      font-size: 14px;
+      font-family: inherit;
+      color: var(--text);
+      resize: none;
+      outline: none;
+      line-height: 1.65;
+      min-height: 80px;
+    }
+
+    .comment-input::placeholder { color: var(--text-soft); }
+
+    /* ── SUBMIT ─────────────────────────── */
+    .submit-wrap {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 12px 14px;
+      padding-bottom: max(14px, env(safe-area-inset-bottom));
+      background: linear-gradient(to top, var(--bg) 70%, transparent 100%);
+      z-index: 80;
+    }
+
+    .submit-btn {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      margin: 0 auto;
+      padding: 16px 20px;
+      background: linear-gradient(135deg, var(--green) 0%, var(--green-dark) 100%);
+      color: #fff;
+      border: none;
+      border-radius: 16px;
+      font-size: 15px;
+      font-weight: 800;
+      font-family: inherit;
+      letter-spacing: 0.2px;
+      cursor: pointer;
+      box-shadow: 0 5px 22px rgba(58,107,57,0.48);
+      transition: transform 0.15s, box-shadow 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .submit-btn:active { transform: scale(0.97); box-shadow: 0 2px 10px rgba(58,107,57,0.35); }
+
+    .submit-btn:disabled {
+      background: linear-gradient(135deg, #c0c0c0, #a8a8a8);
+      box-shadow: none;
+      cursor: default;
+    }
+
+    .submit-icon { font-size: 18px; }
+
+    /* ── TOAST ──────────────────────────── */
+    .toast {
+      position: fixed;
+      top: 76px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-8px);
+      background: var(--text);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s, transform 0.25s;
+      z-index: 200;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.22);
+      max-width: 88vw;
+      white-space: normal;
+      text-align: center;
+    }
+
+    .toast.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ── SUCCESS ────────────────────────── */
+    .success-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(246,242,236,0.96);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 300;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.35s ease;
+    }
+
+    .success-overlay.visible {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .success-anim {
+      font-size: 70px;
+      margin-bottom: 18px;
+      animation: popIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+
+    @keyframes popIn {
+      0%   { transform: scale(0.3) rotate(-10deg); opacity: 0; }
+      100% { transform: scale(1) rotate(0deg); opacity: 1; }
+    }
+
+    .success-title {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--green-dark);
+      margin-bottom: 8px;
+    }
+
+    .success-sub {
+      font-size: 14px;
+      color: var(--text-mid);
+    }
+
+    /* ── LEGEND ─────────────────────────── */
+    .legend {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 8px;
+      margin-bottom: 4px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: var(--text-mid);
+      font-weight: 600;
+    }
+
+    @media (max-width: 360px) {
+      .care-grid { gap: 8px; }
+      .rank-btn { font-size: 17px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<header class="header">
+  <div class="header-row">
+    <div class="logo">
+      <div class="logo-leaf">🍃</div>
+      <div class="logo-text">
+        <h1>Kasaneru</h1>
+        <p>家族の介護記録</p>
+      </div>
+    </div>
+    <div class="date-chip" id="dateBadge">—</div>
+  </div>
+  <div class="progress-bar">
+    <div class="progress-fill" id="progressFill"></div>
+  </div>
+  <div class="progress-label" id="progressLabel">0 / 8 カテゴリー入力済み</div>
+</header>
+
+<!-- ── MAIN ── -->
+<main class="content">
+
+  <!-- Night banner -->
+  <div class="night-banner">
+    <div class="night-emoji">🌙</div>
+    <div class="night-text">
+      <h2>今日も1日、お疲れさまでした</h2>
+      <p>今日のケアを記録して、<br>家族みんなで共有しましょう</p>
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <div class="legend-item"><span>🟢</span> 良い</div>
+    <div class="legend-item"><span>🟡</span> 普通</div>
+    <div class="legend-item"><span>🔴</span> 気になる</div>
+  </div>
+
+  <!-- Care categories -->
+  <p class="section-label">ケアカテゴリー</p>
+  <div class="care-grid" id="careGrid"></div>
+
+  <!-- Comment & Photo -->
+  <p class="section-label">追加情報</p>
+  <div class="extra-card">
+
+    <!-- Photo upload -->
+    <button class="upload-btn" onclick="document.getElementById('photoInput').click()" type="button">
+      <span class="upload-icon">📷</span>
+      <span>写真を追加する</span>
+    </button>
+    <input type="file" id="photoInput" accept="image/*" multiple capture="environment">
+
+    <!-- Photo previews -->
+    <div class="photo-strip" id="photoStrip"></div>
+
+    <div class="divider"></div>
+
+    <!-- Comment -->
+    <div class="comment-label">
+      <span>✏️</span>
+      <span>一言コメント（任意）</span>
+    </div>
+    <textarea class="comment-input" id="commentInput" rows="3"
+      placeholder="気になること・特記事項があればどうぞ..."></textarea>
+
+  </div>
+
+  <div style="height: 10px;"></div>
+</main>
+
+<!-- ── SUBMIT BUTTON ── -->
+<div class="submit-wrap">
+  <button class="submit-btn" id="submitBtn" type="button" onclick="submitRecord()">
+    <span class="submit-icon">🌿</span>
+    <span>今日の記録を家族に共有する</span>
+  </button>
+</div>
+
+<!-- ── TOAST ── -->
+<div class="toast" id="toast"></div>
+
+<!-- ── SUCCESS OVERLAY ── -->
+<div class="success-overlay" id="successOverlay">
+  <div class="success-anim" id="successIcon">🌿</div>
+  <div class="success-title">共有しました！</div>
+  <div class="success-sub">家族みんなに届きました ✨</div>
+</div>
+
+<script>
+'use strict';
+
+const CATEGORIES = [
+  { key: 'meal',     icon: '🍽️', label: '食事' },
+  { key: 'bath',     icon: '🛁',  label: 'お風呂' },
+  { key: 'change',   icon: '👕',  label: '着替え' },
+  { key: 'toilet',   icon: '🚽',  label: '排泄' },
+  { key: 'move',     icon: '🚶',  label: '移動' },
+  { key: 'groom',    icon: '🪥',  label: '整容' },
+  { key: 'mood',     icon: '😊',  label: '気分・様子' },
+  { key: 'medicine', icon: '💊',  label: '服薬' },
+];
+
+const RANKS = [
+  { key: 'good',    emoji: '🟢', cls: 'r-good',    sel: 'sel-good',    label: '良い' },
+  { key: 'normal',  emoji: '🟡', cls: 'r-normal',  sel: 'sel-normal',  label: '普通' },
+  { key: 'concern', emoji: '🔴', cls: 'r-concern',  sel: 'sel-concern', label: '気になる' },
+];
+
+let selections = {};
+let photos = [];
+let toastTimer = null;
+
+// ── DATE ──────────────────────────────────
+function setDateBadge() {
+  const now = new Date();
+  const wd = ['日','月','火','水','木','金','土'][now.getDay()];
+  const badge = `${now.getMonth()+1}月${now.getDate()}日（${wd}）`;
+  document.getElementById('dateBadge').textContent = badge;
+}
+
+// ── GRID ──────────────────────────────────
+function buildGrid() {
+  const grid = document.getElementById('careGrid');
+  grid.innerHTML = CATEGORIES.map(cat => `
+    <div class="care-card" id="card-${cat.key}" role="group" aria-label="${cat.label}">
+      <div class="card-head">
+        <span class="card-icon" aria-hidden="true">${cat.icon}</span>
+        <span class="card-name">${cat.label}</span>
+      </div>
+      <div class="rank-row">
+        ${RANKS.map(r => `
+          <button
+            class="rank-btn ${r.cls}"
+            id="btn-${cat.key}-${r.key}"
+            data-cat="${cat.key}"
+            data-rank="${r.key}"
+            aria-label="${cat.label}：${r.label}"
+            aria-pressed="false"
+            type="button">
+            ${r.emoji}
+          </button>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+
+  // Single event delegation
+  grid.addEventListener('click', e => {
+    const btn = e.target.closest('.rank-btn');
+    if (!btn) return;
+    selectRank(btn.dataset.cat, btn.dataset.rank);
+  });
+}
+
+function selectRank(catKey, rankKey) {
+  selections[catKey] = rankKey;
+
+  // Update buttons
+  RANKS.forEach(r => {
+    const btn = document.getElementById(`btn-${catKey}-${r.key}`);
+    const isActive = r.key === rankKey;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-pressed', String(isActive));
+  });
+
+  // Update card state
+  const card = document.getElementById(`card-${catKey}`);
+  RANKS.forEach(r => card.classList.remove(r.sel));
+  const rank = RANKS.find(r => r.key === rankKey);
+  if (rank) card.classList.add(rank.sel);
+
+  updateProgress();
+  if (navigator.vibrate) navigator.vibrate(8);
+}
+
+// ── PROGRESS ──────────────────────────────
+function updateProgress() {
+  const done = Object.keys(selections).length;
+  const total = CATEGORIES.length;
+  const pct = (done / total) * 100;
+  document.getElementById('progressFill').style.width = `${pct}%`;
+  document.getElementById('progressLabel').textContent = `${done} / ${total} カテゴリー入力済み`;
+}
+
+// ── PHOTO ─────────────────────────────────
+document.getElementById('photoInput').addEventListener('change', function() {
+  const files = Array.from(this.files);
+  if (!files.length) return;
+
+  const remaining = 5 - photos.length;
+  if (remaining <= 0) {
+    showToast('写真は最大5枚まで追加できます');
+    this.value = '';
+    return;
+  }
+
+  files.slice(0, remaining).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      photos.push(e.target.result);
+      renderPhotos();
+    };
+    reader.readAsDataURL(file);
+  });
+
+  if (files.length > remaining) {
+    showToast(`写真は最大5枚まで。${remaining}枚のみ追加しました。`);
+  }
+  this.value = '';
+});
+
+function renderPhotos() {
+  const strip = document.getElementById('photoStrip');
+  strip.innerHTML = photos.map((src, i) => `
+    <div class="thumb-wrap">
+      <img class="thumb-img" src="${src}" alt="写真${i+1}">
+      <button class="thumb-del" type="button" onclick="removePhoto(${i})" aria-label="写真${i+1}を削除">✕</button>
+    </div>
+  `).join('');
+}
+
+function removePhoto(index) {
+  photos.splice(index, 1);
+  renderPhotos();
+}
+
+// ── TOAST ─────────────────────────────────
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('visible');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('visible'), 2800);
+}
+
+// ── SUBMIT ────────────────────────────────
+function submitRecord() {
+  const done = Object.keys(selections).length;
+
+  if (done === 0) {
+    showToast('少なくとも1つのカテゴリーを記録してください 🌱');
+    return;
+  }
+
+  const record = {
+    date:       new Date().toISOString(),
+    selections: { ...selections },
+    comment:    document.getElementById('commentInput').value.trim(),
+    photos:     photos.length,
+  };
+
+  console.log('[Kasaneru] 送信データ:', record);
+
+  // Show success
+  const overlay = document.getElementById('successOverlay');
+  overlay.classList.add('visible');
+
+  const icons = ['🌿','🍃','🌱','🌾','🌼'];
+  document.getElementById('successIcon').textContent =
+    icons[Math.floor(Math.random() * icons.length)];
+
+  setTimeout(() => {
+    overlay.classList.remove('visible');
+    resetForm();
+  }, 2400);
+}
+
+function resetForm() {
+  selections = {};
+  photos = [];
+  document.getElementById('commentInput').value = '';
+  buildGrid();
+  renderPhotos();
+  updateProgress();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── INIT ──────────────────────────────────
+setDateBadge();
+buildGrid();
+</script>
+</body>
+</html>
