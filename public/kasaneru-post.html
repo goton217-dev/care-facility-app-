@@ -831,7 +831,7 @@ async function submitRecord() {
       }),
     });
 
-    if (res.status === 401) { location.href = '/'; return; }
+    if (res.status === 401) { location.href = '/kasaneru-login.html'; return; }
     if (!res.ok) throw new Error('送信失敗');
 
     const overlay = document.getElementById('successOverlay');

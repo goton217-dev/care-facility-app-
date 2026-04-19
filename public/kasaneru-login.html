@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Kasaneru — ログイン</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:         #F6F2EC;
+      --card:       #FFFFFF;
+      --green:      #5A8A58;
+      --green-dark: #3D6B3B;
+      --green-mid:  #88B786;
+      --earth:      #C49A6C;
+      --earth-light:#F5ECDF;
+      --night:      #1E2740;
+      --night-mid:  #2D3D5C;
+      --text:       #3B2F28;
+      --text-mid:   #6E5E55;
+      --text-soft:  #A89F98;
+      --border:     #E5DDD4;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'M PLUS Rounded 1c', 'Hiragino Maru Gothic ProN', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      background: linear-gradient(160deg, var(--night) 0%, var(--night-mid) 100%);
+      padding: 52px 24px 44px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .hero-leaf {
+      width: 72px; height: 72px;
+      background: linear-gradient(135deg, var(--green) 0%, var(--green-mid) 100%);
+      border-radius: 22px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 38px;
+      box-shadow: 0 8px 28px rgba(90,138,88,0.5);
+      margin-bottom: 18px;
+      animation: floatIn 0.5s ease both;
+    }
+
+    @keyframes floatIn {
+      from { transform: translateY(12px); opacity: 0; }
+      to   { transform: translateY(0); opacity: 1; }
+    }
+
+    .hero-title {
+      font-size: 32px;
+      font-weight: 800;
+      color: #FFFFFF;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+      animation: floatIn 0.5s 0.1s ease both;
+    }
+
+    .hero-kanji {
+      font-size: 13px;
+      color: rgba(255,255,255,0.45);
+      font-weight: 500;
+      margin-bottom: 14px;
+      letter-spacing: 2px;
+      animation: floatIn 0.5s 0.15s ease both;
+    }
+
+    .hero-tagline {
+      font-size: 14px;
+      color: rgba(255,255,255,0.7);
+      line-height: 1.7;
+      animation: floatIn 0.5s 0.2s ease both;
+    }
+
+    /* ── CARD AREA ── */
+    .card-area {
+      flex: 1;
+      max-width: 480px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 28px 18px max(24px, env(safe-area-inset-bottom));
+    }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-soft);
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    /* ── MEMBER GRID ── */
+    .member-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+
+    .member-card {
+      background: var(--card);
+      border: 2.5px solid transparent;
+      border-radius: 16px;
+      padding: 18px 14px 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+      transition: border-color 0.2s, background 0.2s, transform 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    .member-card:active { transform: scale(0.96); }
+
+    .member-card.selected {
+      border-color: var(--green);
+      background: #EAF2E9;
+    }
+
+    .member-avatar {
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; font-weight: 800; color: #fff;
+      flex-shrink: 0;
+    }
+
+    .member-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      text-align: center;
+    }
+
+    .member-role {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-soft);
+      background: var(--bg);
+      padding: 3px 9px;
+      border-radius: 10px;
+    }
+
+    .member-card.selected .member-role {
+      background: rgba(90,138,88,0.15);
+      color: var(--green);
+    }
+
+    .check-badge {
+      position: absolute;
+      top: 10px; right: 10px;
+      width: 20px; height: 20px;
+      background: var(--green);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; color: #fff;
+      opacity: 0;
+      transform: scale(0.5);
+      transition: opacity 0.2s, transform 0.2s;
+    }
+
+    .member-card-wrap {
+      position: relative;
+    }
+
+    .member-card.selected + .check-badge,
+    .member-card-wrap.selected .check-badge {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    /* ── LOGIN BUTTON ── */
+    .login-btn {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, var(--green), var(--green-dark));
+      color: #fff;
+      border: none;
+      border-radius: 16px;
+      font-size: 16px;
+      font-weight: 800;
+      font-family: inherit;
+      cursor: pointer;
+      box-shadow: 0 5px 20px rgba(58,107,57,0.45);
+      transition: transform 0.15s, box-shadow 0.15s, opacity 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .login-btn:active { transform: scale(0.97); }
+    .login-btn:disabled {
+      opacity: 0.45;
+      box-shadow: none;
+      cursor: default;
+    }
+
+    /* ── ERROR ── */
+    .error-msg {
+      color: #D24545;
+      font-size: 13px;
+      font-weight: 600;
+      text-align: center;
+      margin-top: 12px;
+      min-height: 20px;
+    }
+
+    /* ── LOADING ── */
+    .skeleton-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+
+    .skeleton-card {
+      background: var(--card);
+      border-radius: 16px;
+      height: 120px;
+      animation: shimmer 1.4s infinite;
+    }
+
+    @keyframes shimmer {
+      0%   { opacity: 0.6; }
+      50%  { opacity: 1; }
+      100% { opacity: 0.6; }
+    }
+
+    /* ── FOOTER ── */
+    .footer {
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-soft);
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── HERO ── -->
+<div class="hero">
+  <div class="hero-leaf">🍃</div>
+  <div class="hero-title">Kasaneru</div>
+  <div class="hero-kanji">重ねる</div>
+  <div class="hero-tagline">家族でつなぐ、介護の記録<br>毎日の小さな安心を積み重ねよう</div>
+</div>
+
+<!-- ── LOGIN CARD ── -->
+<div class="card-area">
+  <p class="section-label">あなたはどなたですか？</p>
+
+  <div id="memberGrid">
+    <!-- skeleton -->
+    <div class="skeleton-grid">
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+    </div>
+  </div>
+
+  <button class="login-btn" id="loginBtn" type="button" onclick="doLogin()" disabled>
+    <span>🌿</span>
+    <span id="loginBtnText">メンバーを選んでください</span>
+  </button>
+
+  <div class="error-msg" id="errorMsg"></div>
+
+  <div class="footer">毎日の記録が家族をつなぎます</div>
+</div>
+
+<script>
+'use strict';
+
+const AVATAR_COLORS = ['#5A8A58','#5B7FA6','#C47E5A','#8A5AB4','#A65B5B','#5A8A8A'];
+const ROLE_LABELS   = { family: '家族', caregiver: 'ケアマネ' };
+
+let selectedId   = null;
+let selectedName = null;
+
+function colorFor(name) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffffffff;
+  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+}
+
+function selectMember(id, name) {
+  selectedId   = id;
+  selectedName = name;
+
+  document.querySelectorAll('.member-card-wrap').forEach(w => w.classList.remove('selected'));
+  document.getElementById(`wrap-${id}`)?.classList.add('selected');
+
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = false;
+  document.getElementById('loginBtnText').textContent = `${name} でログイン`;
+  document.getElementById('errorMsg').textContent = '';
+}
+
+async function loadMembers() {
+  try {
+    const res  = await fetch('/api/kasaneru/members');
+    const members = await res.json();
+
+    const grid = document.getElementById('memberGrid');
+    grid.innerHTML = `<div class="member-grid">${
+      members.map(m => `
+        <div class="member-card-wrap" id="wrap-${m.id}">
+          <div class="member-card" onclick="selectMember(${m.id}, '${m.name.replace(/'/g,"\\'")}')">
+            <div class="member-avatar" style="background:${colorFor(m.name)}">${m.name[0]}</div>
+            <div class="member-name">${m.name}</div>
+            <div class="member-role">${ROLE_LABELS[m.role] || m.role}</div>
+          </div>
+          <div class="check-badge">✓</div>
+        </div>
+      `).join('')
+    }</div>`;
+  } catch {
+    document.getElementById('memberGrid').innerHTML =
+      '<p style="color:var(--text-soft);font-size:13px;text-align:center;padding:20px 0;">メンバーの読み込みに失敗しました</p>';
+  }
+}
+
+async function doLogin() {
+  if (!selectedName) return;
+
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true;
+  document.getElementById('loginBtnText').textContent = 'ログイン中...';
+  document.getElementById('errorMsg').textContent = '';
+
+  try {
+    const res  = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: selectedName }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) throw new Error(data.error || 'ログインに失敗しました');
+    location.href = '/kasaneru-feed.html';
+
+  } catch (e) {
+    document.getElementById('errorMsg').textContent = e.message;
+    btn.disabled = false;
+    document.getElementById('loginBtnText').textContent = `${selectedName} でログイン`;
+  }
+}
+
+// ── 既にログイン済みなら即リダイレクト ──
+(async () => {
+  try {
+    const res  = await fetch('/api/me');
+    const data = await res.json();
+    if (data.user) {
+      location.href = '/kasaneru-feed.html';
+      return;
+    }
+  } catch {}
+  loadMembers();
+})();
+</script>
+</body>
+</html>

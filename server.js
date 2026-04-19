@@ -198,6 +198,14 @@ app.delete('/api/vitals/:id', requireFamily, async (req, res) => {
   res.json({ ok: true });
 });
 
+// ── Kasaneru: メンバー一覧（認証不要） ───────────────────
+app.get('/api/kasaneru/members', async (req, res) => {
+  const { rows } = await pool.query(
+    "SELECT id, name, role FROM users ORDER BY id"
+  );
+  res.json(rows);
+});
+
 // ── Kasaneru: 介護記録 ────────────────────────────────────
 
 // 記録一覧
