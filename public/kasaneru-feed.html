@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Kasaneru — フィード</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:           #F6F2EC;
+      --card:         #FFFFFF;
+      --green:        #5A8A58;
+      --green-dark:   #3D6B3B;
+      --green-light:  #EAF2E9;
+      --earth:        #C49A6C;
+      --earth-light:  #F5ECDF;
+      --text:         #3B2F28;
+      --text-mid:     #6E5E55;
+      --text-soft:    #A89F98;
+      --border:       #E5DDD4;
+      --nav-h:        62px;
+
+      --good:    #4BAA4B;
+      --normal:  #CB9C14;
+      --concern: #D24545;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'M PLUS Rounded 1c', 'Hiragino Maru Gothic ProN', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      padding-bottom: calc(var(--nav-h) + 16px);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 18px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 1px 10px rgba(0,0,0,0.06);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo { display: flex; align-items: center; gap: 10px; }
+
+    .logo-leaf {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--green), #88B786);
+      border-radius: 11px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 19px;
+      box-shadow: 0 2px 8px rgba(90,138,88,0.3);
+    }
+
+    .logo-text h1 { font-size: 18px; font-weight: 800; color: var(--green-dark); }
+    .logo-text p  { font-size: 10px; color: var(--text-soft); margin-top: 1px; }
+
+    .header-right { display: flex; align-items: center; gap: 12px; }
+
+    .reload-btn {
+      width: 34px; height: 34px;
+      border: none; background: var(--bg); border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; cursor: pointer; color: var(--text-mid);
+      transition: background 0.2s;
+    }
+    .reload-btn:active { background: var(--border); }
+
+    /* ── CONTENT ── */
+    .content {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 14px 14px 0;
+    }
+
+    /* ── MEMBERS ROW ── */
+    .members-row {
+      display: flex;
+      gap: 14px;
+      overflow-x: auto;
+      padding: 4px 2px 12px;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    .members-row::-webkit-scrollbar { display: none; }
+
+    .member-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .member-avatar-wrap {
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      padding: 2.5px;
+      background: conic-gradient(var(--good), var(--earth), var(--green));
+    }
+
+    .member-avatar-wrap.no-record {
+      background: var(--border);
+    }
+
+    .member-avatar {
+      width: 100%; height: 100%;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; font-weight: 800;
+      color: #fff;
+      border: 2.5px solid var(--card);
+    }
+
+    .member-name {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-mid);
+      max-width: 56px;
+      text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* ── FEED CARDS ── */
+    .feed-card {
+      background: var(--card);
+      border-radius: 18px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      margin-bottom: 14px;
+      overflow: hidden;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 14px 14px 10px;
+    }
+
+    .avatar {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px; font-weight: 800; color: #fff;
+      flex-shrink: 0;
+    }
+
+    .card-meta { flex: 1; min-width: 0; }
+    .card-meta-name { font-size: 14px; font-weight: 700; }
+    .card-meta-date { font-size: 11px; color: var(--text-soft); margin-top: 1px; }
+
+    .card-date-chip {
+      background: var(--earth-light);
+      color: var(--earth);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 4px 9px;
+      border-radius: 14px;
+      flex-shrink: 0;
+    }
+
+    /* ── STATUS GRID ── */
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      background: var(--bg);
+      padding: 0 14px 12px;
+    }
+
+    .status-cell {
+      background: var(--card);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 8px 4px;
+      border-radius: 10px;
+    }
+
+    .status-icon { font-size: 18px; line-height: 1; margin-bottom: 4px; }
+    .status-label { font-size: 9px; color: var(--text-soft); font-weight: 600; margin-bottom: 3px; }
+
+    .status-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+    }
+    .dot-good    { background: var(--good); }
+    .dot-normal  { background: var(--normal); }
+    .dot-concern { background: var(--concern); }
+    .dot-none    { background: var(--border); }
+
+    /* ── PHOTOS ── */
+    .photo-row {
+      display: flex;
+      gap: 3px;
+      overflow-x: auto;
+      padding: 0 14px 12px;
+      scrollbar-width: none;
+    }
+    .photo-row::-webkit-scrollbar { display: none; }
+
+    .photo-thumb {
+      width: 90px; height: 90px;
+      border-radius: 10px;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+
+    /* ── COMMENT ── */
+    .card-comment {
+      padding: 0 14px 12px;
+      font-size: 13px;
+      color: var(--text-mid);
+      line-height: 1.6;
+    }
+
+    .comment-author {
+      font-weight: 700;
+      color: var(--text);
+      margin-right: 5px;
+    }
+
+    /* ── ACTIONS ── */
+    .card-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 14px 14px;
+      border-top: 1px solid var(--bg);
+    }
+
+    .react-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 7px 14px;
+      border: 2px solid var(--border);
+      border-radius: 20px;
+      background: transparent;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-mid);
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.18s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .react-btn.reacted {
+      border-color: #F87171;
+      color: #E53E3E;
+      background: #FEF2F2;
+    }
+
+    .react-btn:active { transform: scale(0.93); }
+
+    .react-count { font-size: 12px; }
+
+    .time-label {
+      margin-left: auto;
+      font-size: 11px;
+      color: var(--text-soft);
+    }
+
+    /* ── EMPTY STATE ── */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-soft);
+    }
+
+    .empty-icon { font-size: 56px; margin-bottom: 16px; }
+    .empty-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; color: var(--text-mid); }
+    .empty-sub { font-size: 13px; line-height: 1.6; }
+
+    .post-link-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin-top: 20px;
+      padding: 13px 24px;
+      background: linear-gradient(135deg, var(--green), var(--green-dark));
+      color: #fff;
+      border-radius: 14px;
+      font-size: 14px;
+      font-weight: 800;
+      font-family: inherit;
+      text-decoration: none;
+      box-shadow: 0 4px 16px rgba(58,107,57,0.4);
+    }
+
+    /* ── LOADING ── */
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-soft);
+      font-size: 14px;
+    }
+
+    /* ── COMMENT SHEET ── */
+    .sheet-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 180;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.28s ease;
+    }
+
+    .sheet-backdrop.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .comment-sheet {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: var(--card);
+      border-radius: 20px 20px 0 0;
+      z-index: 190;
+      max-height: 75dvh;
+      display: flex;
+      flex-direction: column;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .comment-sheet.open {
+      transform: translateY(0);
+    }
+
+    .sheet-handle {
+      width: 36px; height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      margin: 10px auto 0;
+      flex-shrink: 0;
+    }
+
+    .sheet-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 18px 10px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .sheet-title { font-size: 15px; font-weight: 800; color: var(--text); }
+
+    .sheet-close {
+      width: 30px; height: 30px;
+      border: none; background: var(--bg);
+      border-radius: 50%;
+      font-size: 14px; color: var(--text-mid);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+
+    .comments-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 60px;
+    }
+
+    .comment-item {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .comment-avatar {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 800; color: #fff;
+      flex-shrink: 0;
+    }
+
+    .comment-bubble { flex: 1; min-width: 0; }
+
+    .comment-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-mid);
+      margin-bottom: 3px;
+    }
+
+    .comment-text {
+      font-size: 14px;
+      color: var(--text);
+      line-height: 1.55;
+      background: var(--bg);
+      border-radius: 0 12px 12px 12px;
+      padding: 8px 12px;
+      word-break: break-word;
+    }
+
+    .comment-time {
+      font-size: 10px;
+      color: var(--text-soft);
+      margin-top: 4px;
+      padding-left: 2px;
+    }
+
+    .no-comments {
+      text-align: center;
+      padding: 20px;
+      color: var(--text-soft);
+      font-size: 13px;
+    }
+
+    .sheet-input-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+      padding: 10px 14px 12px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .sheet-textarea {
+      flex: 1;
+      background: var(--bg);
+      border: none;
+      border-radius: 18px;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-family: inherit;
+      color: var(--text);
+      resize: none;
+      outline: none;
+      max-height: 100px;
+      line-height: 1.5;
+    }
+
+    .sheet-textarea::placeholder { color: var(--text-soft); }
+
+    .sheet-send {
+      width: 38px; height: 38px;
+      background: linear-gradient(135deg, var(--green), var(--green-dark));
+      border: none; border-radius: 50%;
+      color: #fff; font-size: 17px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: transform 0.12s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .sheet-send:active { transform: scale(0.9); }
+    .sheet-send:disabled { opacity: 0.4; }
+
+    /* ── BOTTOM NAV ── */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: var(--nav-h);
+      background: var(--card);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      padding-bottom: env(safe-area-inset-bottom);
+      z-index: 90;
+      box-shadow: 0 -2px 12px rgba(0,0,0,0.06);
+    }
+
+    .nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      text-decoration: none;
+      padding: 8px 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .nav-icon  { font-size: 20px; line-height: 1; }
+    .nav-label { font-size: 9px; font-weight: 700; color: var(--text-soft); }
+    .nav-item.active .nav-label { color: var(--green); }
+
+    .nav-post {
+      width: 46px; height: 46px;
+      background: linear-gradient(135deg, var(--green), var(--green-dark));
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px;
+      box-shadow: 0 4px 14px rgba(58,107,57,0.45);
+      text-decoration: none;
+      flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ── DATE DIVIDER ── */
+    .date-divider {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 4px 0 12px;
+      color: var(--text-soft);
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .date-divider::before, .date-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<header class="header">
+  <div class="logo">
+    <div class="logo-leaf">🍃</div>
+    <div class="logo-text">
+      <h1>Kasaneru</h1>
+      <p>家族の介護記録</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <button class="reload-btn" onclick="loadFeed()" title="更新">🔄</button>
+  </div>
+</header>
+
+<!-- ── MAIN ── -->
+<main class="content">
+  <!-- Members row -->
+  <div class="members-row" id="membersRow">
+    <div style="color:var(--text-soft);font-size:12px;padding:16px 0;">読み込み中...</div>
+  </div>
+
+  <!-- Feed -->
+  <div id="feedContainer">
+    <div class="loading">🌱 記録を読み込み中...</div>
+  </div>
+</main>
+
+<!-- ── BOTTOM NAV ── -->
+<nav class="bottom-nav">
+  <a href="/kasaneru-feed.html" class="nav-item active">
+    <span class="nav-icon">🏠</span>
+    <span class="nav-label">フィード</span>
+  </a>
+  <a href="/kasaneru-post.html" class="nav-post" aria-label="記録">➕</a>
+  <a href="/kasaneru-summary.html" class="nav-item">
+    <span class="nav-icon">📊</span>
+    <span class="nav-label">サマリー</span>
+  </a>
+  <a href="/kasaneru-profile.html" class="nav-item">
+    <span class="nav-icon">👤</span>
+    <span class="nav-label">プロフィール</span>
+  </a>
+</nav>
+
+<!-- ── COMMENT SHEET ── -->
+<div class="sheet-backdrop" id="backdrop" onclick="closeSheet()"></div>
+<div class="comment-sheet" id="commentSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <span class="sheet-title">💬 コメント</span>
+    <button class="sheet-close" onclick="closeSheet()" type="button">✕</button>
+  </div>
+  <div class="comments-list" id="commentsList">
+    <div class="no-comments">読み込み中...</div>
+  </div>
+  <div class="sheet-input-row">
+    <textarea class="sheet-textarea" id="commentInput" rows="1"
+      placeholder="コメントを入力..."
+      oninput="autoResize(this)"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendComment();}"></textarea>
+    <button class="sheet-send" id="sendBtn" onclick="sendComment()" type="button">➤</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+const CATEGORIES = [
+  { key: 'meal',     icon: '🍽️', label: '食事' },
+  { key: 'bath',     icon: '🛁',  label: 'お風呂' },
+  { key: 'change',   icon: '👕',  label: '着替え' },
+  { key: 'toilet',   icon: '🚽',  label: '排泄' },
+  { key: 'move',     icon: '🚶',  label: '移動' },
+  { key: 'groom',    icon: '🪥',  label: '整容' },
+  { key: 'mood',     icon: '😊',  label: '気分' },
+  { key: 'medicine', icon: '💊',  label: '服薬' },
+];
+
+const AVATAR_COLORS = ['#5A8A58','#5B7FA6','#C47E5A','#8A5AB4','#A65B5B','#5A8A8A'];
+
+let myReactions = new Set();
+let currentUser = null;
+
+function colorFor(name) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffffffff;
+  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+}
+
+function initial(name) {
+  return name ? name[0] : '?';
+}
+
+function dotClass(status) {
+  if (status === 'good')    return 'dot-good';
+  if (status === 'normal')  return 'dot-normal';
+  if (status === 'concern') return 'dot-concern';
+  return 'dot-none';
+}
+
+function relativeTime(createdAt) {
+  if (!createdAt) return '';
+  const date = new Date(createdAt.replace(/\//g, '-').replace(/(\d{4})-(\d{1,2})-(\d{1,2})/, '$1-$2-$3'));
+  if (isNaN(date.getTime())) return createdAt;
+  const diff = (Date.now() - date.getTime()) / 1000;
+  if (diff < 60)   return 'たった今';
+  if (diff < 3600) return `${Math.floor(diff/60)}分前`;
+  if (diff < 86400) return `${Math.floor(diff/3600)}時間前`;
+  return `${Math.floor(diff/86400)}日前`;
+}
+
+async function apiFetch(url, opts = {}) {
+  const res = await fetch(url, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', ...opts.headers }
+  });
+  if (res.status === 401) {
+    location.href = '/kasaneru-login.html';
+    throw new Error('未ログイン');
+  }
+  return res.json();
+}
+
+async function loadFeed() {
+  document.getElementById('feedContainer').innerHTML = '<div class="loading">🌱 記録を読み込み中...</div>';
+
+  try {
+    const [records, reactions, meData] = await Promise.all([
+      apiFetch('/api/kasaneru/records'),
+      apiFetch('/api/kasaneru/my-reactions'),
+      apiFetch('/api/me'),
+    ]);
+
+    currentUser = meData.user;
+    myReactions = new Set(reactions);
+
+    renderMembers(records);
+    renderFeed(records);
+  } catch (e) {
+    document.getElementById('feedContainer').innerHTML =
+      '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">読み込みに失敗しました</div><div class="empty-sub">ログインが必要です</div></div>';
+  }
+}
+
+function renderMembers(records) {
+  // Collect latest record per user
+  const latestByUser = {};
+  records.forEach(r => {
+    if (!latestByUser[r.user_name]) latestByUser[r.user_name] = r;
+  });
+
+  const container = document.getElementById('membersRow');
+  const entries = Object.entries(latestByUser);
+
+  if (entries.length === 0) {
+    container.innerHTML = '<div style="color:var(--text-soft);font-size:12px;padding:8px 0;width:100%;text-align:center;">まだ記録がありません</div>';
+    return;
+  }
+
+  container.innerHTML = entries.map(([name, rec]) => `
+    <div class="member-item" onclick="scrollToUser('${escHtml(name)}')">
+      <div class="member-avatar-wrap">
+        <div class="member-avatar" style="background:${colorFor(name)}">
+          ${initial(name)}
+        </div>
+      </div>
+      <div class="member-name">${escHtml(name)}</div>
+    </div>
+  `).join('');
+}
+
+function renderFeed(records) {
+  const container = document.getElementById('feedContainer');
+
+  if (records.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🌱</div>
+        <div class="empty-title">まだ記録がありません</div>
+        <div class="empty-sub">最初の記録を投稿して、<br>家族みんなで共有しましょう</div>
+        <a href="/kasaneru-post.html" class="post-link-btn">
+          <span>🌿</span><span>記録を作成する</span>
+        </a>
+      </div>
+    `;
+    return;
+  }
+
+  // Group by date
+  const byDate = {};
+  records.forEach(r => {
+    const d = r.record_date || r.created_at?.split(' ')[0] || '—';
+    if (!byDate[d]) byDate[d] = [];
+    byDate[d].push(r);
+  });
+
+  let html = '';
+  Object.entries(byDate).forEach(([date, recs]) => {
+    html += `<div class="date-divider">${escHtml(date)}</div>`;
+    recs.forEach(r => { html += buildCard(r); });
+  });
+
+  container.innerHTML = html;
+}
+
+function buildCard(r) {
+  const sel = typeof r.selections === 'string' ? JSON.parse(r.selections) : (r.selections || {});
+  const photos = typeof r.photos === 'string' ? JSON.parse(r.photos) : (r.photos || []);
+  const reacted = myReactions.has(r.id);
+  const color = colorFor(r.user_name || '?');
+
+  const statusGrid = CATEGORIES.map(cat => `
+    <div class="status-cell">
+      <div class="status-icon">${cat.icon}</div>
+      <div class="status-label">${cat.label}</div>
+      <div class="status-dot ${dotClass(sel[cat.key])}"></div>
+    </div>
+  `).join('');
+
+  const photoHtml = photos.length > 0
+    ? `<div class="photo-row">${photos.map((src, i) => `<img class="photo-thumb" src="${src}" alt="写真${i+1}">`).join('')}</div>`
+    : '';
+
+  const commentHtml = r.comment
+    ? `<div class="card-comment"><span class="comment-author">${escHtml(r.user_name)}</span>${escHtml(r.comment)}</div>`
+    : '';
+
+  return `
+    <div class="feed-card" id="card-${r.id}" data-user="${escHtml(r.user_name || '')}">
+      <div class="card-header">
+        <div class="avatar" style="background:${color}">${initial(r.user_name)}</div>
+        <div class="card-meta">
+          <div class="card-meta-name">${escHtml(r.user_name || '—')}</div>
+          <div class="card-meta-date">${r.record_date || '—'}</div>
+        </div>
+        <div class="card-date-chip">${badgeSummary(sel)}</div>
+      </div>
+
+      <div class="status-grid">${statusGrid}</div>
+
+      ${photoHtml}
+      ${commentHtml}
+
+      <div class="card-actions">
+        <button class="react-btn ${reacted ? 'reacted' : ''}"
+          id="react-${r.id}"
+          onclick="toggleReact(${r.id})"
+          type="button">
+          <span>${reacted ? '❤️' : '🤍'}</span>
+          <span class="react-count" id="rcount-${r.id}">${r.reaction_count || 0}</span>
+        </button>
+        <button class="react-btn"
+          id="comment-btn-${r.id}"
+          onclick="openSheet(${r.id})"
+          type="button">
+          <span>💬</span>
+          <span class="react-count" id="ccount-${r.id}">${r.comment_count || 0}</span>
+        </button>
+        <span class="time-label">${relativeTime(r.created_at)}</span>
+      </div>
+    </div>
+  `;
+}
+
+function badgeSummary(sel) {
+  const counts = { good: 0, normal: 0, concern: 0 };
+  Object.values(sel).forEach(v => { if (counts[v] !== undefined) counts[v]++; });
+  if (counts.concern > 0) return `🔴 ${counts.concern}件`;
+  if (counts.good >= 6)   return '🟢 良好';
+  return `📋 ${Object.keys(sel).length}件`;
+}
+
+async function toggleReact(id) {
+  try {
+    const data = await apiFetch(`/api/kasaneru/records/${id}/react`, { method: 'POST' });
+    const btn = document.getElementById(`react-${id}`);
+    const countEl = document.getElementById(`rcount-${id}`);
+    const cur = parseInt(countEl.textContent) || 0;
+
+    if (data.reacted) {
+      myReactions.add(id);
+      btn.classList.add('reacted');
+      btn.querySelector('span').textContent = '❤️';
+      countEl.textContent = cur + 1;
+    } else {
+      myReactions.delete(id);
+      btn.classList.remove('reacted');
+      btn.querySelector('span').textContent = '🤍';
+      countEl.textContent = Math.max(0, cur - 1);
+    }
+    if (navigator.vibrate) navigator.vibrate(8);
+  } catch {}
+}
+
+function scrollToUser(name) {
+  const el = document.querySelector(`.feed-card[data-user="${name}"]`);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function escHtml(s) {
+  if (!s && s !== 0) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── COMMENT SHEET ─────────────────────────
+let activeRecordId = null;
+
+function openSheet(recordId) {
+  activeRecordId = recordId;
+  document.getElementById('commentInput').value = '';
+  document.getElementById('commentsList').innerHTML = '<div class="no-comments">読み込み中...</div>';
+  document.getElementById('backdrop').classList.add('open');
+  document.getElementById('commentSheet').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  loadComments(recordId);
+}
+
+function closeSheet() {
+  activeRecordId = null;
+  document.getElementById('backdrop').classList.remove('open');
+  document.getElementById('commentSheet').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+async function loadComments(recordId) {
+  try {
+    const comments = await apiFetch(`/api/kasaneru/records/${recordId}/comments`);
+    renderComments(comments);
+  } catch {
+    document.getElementById('commentsList').innerHTML =
+      '<div class="no-comments">読み込みに失敗しました</div>';
+  }
+}
+
+function renderComments(comments) {
+  const list = document.getElementById('commentsList');
+  if (comments.length === 0) {
+    list.innerHTML = '<div class="no-comments">まだコメントがありません。<br>最初のコメントを書いてみましょう 🌱</div>';
+    return;
+  }
+  list.innerHTML = comments.map(c => `
+    <div class="comment-item">
+      <div class="comment-avatar" style="background:${colorFor(c.user_name || '?')}">${initial(c.user_name)}</div>
+      <div class="comment-bubble">
+        <div class="comment-name">${escHtml(c.user_name)}</div>
+        <div class="comment-text">${escHtml(c.body)}</div>
+        <div class="comment-time">${relativeTime(c.created_at)}</div>
+      </div>
+    </div>
+  `).join('');
+  list.scrollTop = list.scrollHeight;
+}
+
+async function sendComment() {
+  const input = document.getElementById('commentInput');
+  const body  = input.value.trim();
+  if (!body || !activeRecordId) return;
+
+  const btn = document.getElementById('sendBtn');
+  btn.disabled = true;
+
+  try {
+    await apiFetch(`/api/kasaneru/records/${activeRecordId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ body }),
+    });
+    input.value = '';
+    input.style.height = '';
+    await loadComments(activeRecordId);
+
+    // Update count on card
+    const countEl = document.getElementById(`ccount-${activeRecordId}`);
+    if (countEl) countEl.textContent = parseInt(countEl.textContent || '0') + 1;
+
+    if (navigator.vibrate) navigator.vibrate(8);
+  } catch {}
+
+  btn.disabled = false;
+  input.focus();
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+}
+
+// ── INIT ──
+loadFeed();
+</script>
+</body>
+</html>

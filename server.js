@@ -198,6 +198,174 @@ app.delete('/api/vitals/:id', requireFamily, async (req, res) => {
   res.json({ ok: true });
 });
 
+// ── Kasaneru: メンバー一覧（認証不要） ───────────────────
+app.get('/api/kasaneru/members', async (req, res) => {
+  const { rows } = await pool.query(
+    "SELECT id, name, role FROM users ORDER BY id"
+  );
+  res.json(rows);
+});
+
+// ── Kasaneru: 介護記録 ────────────────────────────────────
+
+// 記録一覧（リアクション数・コメント数を含む）
+app.get('/api/kasaneru/records', requireAuth, async (req, res) => {
+  const { rows } = await pool.query(`
+    SELECT r.*, u.name as user_name,
+           COUNT(DISTINCT rr.id)::int as reaction_count,
+           COUNT(DISTINCT rc.id)::int as comment_count
+    FROM care_records r
+    LEFT JOIN users u ON r.user_id = u.id
+    LEFT JOIN record_reactions rr ON rr.record_id = r.id
+    LEFT JOIN record_comments rc ON rc.record_id = r.id
+    GROUP BY r.id, u.name
+    ORDER BY r.created_at DESC
+    LIMIT 50
+  `);
+  res.json(rows);
+});
+
+// コメント一覧
+app.get('/api/kasaneru/records/:id/comments', requireAuth, async (req, res) => {
+  const { rows } = await pool.query(`
+    SELECT c.*, u.name as user_name
+    FROM record_comments c
+    LEFT JOIN users u ON c.user_id = u.id
+    WHERE c.record_id = $1
+    ORDER BY c.created_at ASC
+  `, [parseInt(req.params.id)]);
+  res.json(rows);
+});
+
+// コメントを追加
+app.post('/api/kasaneru/records/:id/comments', requireAuth, async (req, res) => {
+  const record_id = parseInt(req.params.id);
+  const { body } = req.body;
+  if (!body?.trim()) return res.status(400).json({ error: 'コメントを入力してください' });
+  const { rows } = await pool.query(
+    `INSERT INTO record_comments (record_id, user_id, body, created_at)
+     VALUES ($1, $2, $3, $4) RETURNING *`,
+    [record_id, req.session.user.id, body.trim(), now()]
+  );
+  const userRes = await pool.query('SELECT name FROM users WHERE id=$1', [req.session.user.id]);
+  res.json({ ...rows[0], user_name: userRes.rows[0]?.name });
+});
+
+// 自分がリアクション済みの記録IDリスト
+app.get('/api/kasaneru/my-reactions', requireAuth, async (req, res) => {
+  const { rows } = await pool.query(
+    'SELECT record_id FROM record_reactions WHERE user_id = $1',
+    [req.session.user.id]
+  );
+  res.json(rows.map(r => r.record_id));
+});
+
+// 記録を投稿
+app.post('/api/kasaneru/records', requireAuth, async (req, res) => {
+  const { selections, comment, photos } = req.body;
+  if (!selections || typeof selections !== 'object') {
+    return res.status(400).json({ error: '記録データが不正です' });
+  }
+  const { rows } = await pool.query(
+    `INSERT INTO care_records (user_id, record_date, selections, comment, photos, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+    [
+      req.session.user.id,
+      new Date().toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' }),
+      JSON.stringify(selections),
+      comment || '',
+      JSON.stringify(photos || []),
+      now()
+    ]
+  );
+  res.json({ id: rows[0].id });
+});
+
+// リアクションをトグル
+app.post('/api/kasaneru/records/:id/react', requireAuth, async (req, res) => {
+  const record_id = parseInt(req.params.id);
+  const user_id = req.session.user.id;
+  const { rows } = await pool.query(
+    'SELECT id FROM record_reactions WHERE record_id=$1 AND user_id=$2',
+    [record_id, user_id]
+  );
+  if (rows.length > 0) {
+    await pool.query('DELETE FROM record_reactions WHERE record_id=$1 AND user_id=$2', [record_id, user_id]);
+    res.json({ reacted: false });
+  } else {
+    await pool.query('INSERT INTO record_reactions (record_id, user_id) VALUES ($1,$2)', [record_id, user_id]);
+    res.json({ reacted: true });
+  }
+});
+
+// ── Kasaneru: 自分の記録履歴 ─────────────────────────────
+app.get('/api/kasaneru/my-records', requireAuth, async (req, res) => {
+  const { rows } = await pool.query(`
+    SELECT r.*, COUNT(rr.id)::int as reaction_count
+    FROM care_records r
+    LEFT JOIN record_reactions rr ON rr.record_id = r.id
+    WHERE r.user_id = $1
+    GROUP BY r.id
+    ORDER BY r.created_at DESC
+    LIMIT 100
+  `, [req.session.user.id]);
+  res.json(rows);
+});
+
+// ── Kasaneru: 週間サマリー ────────────────────────────────
+app.get('/api/kasaneru/summary', requireAuth, async (req, res) => {
+  const days = Math.min(30, Math.max(7, parseInt(req.query.days) || 7));
+
+  const { rows } = await pool.query(`
+    SELECT r.*, u.name as user_name
+    FROM care_records r
+    LEFT JOIN users u ON r.user_id = u.id
+    ORDER BY r.created_at DESC
+    LIMIT 500
+  `);
+
+  // 対象日付リスト（今日含む過去N日）
+  const today = new Date();
+  const dates = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    dates.push(d.toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' }));
+  }
+
+  const recent = rows.filter(r => dates.includes(r.record_date));
+
+  const CATS = ['meal','bath','change','toilet','move','groom','mood','medicine'];
+  const catStats = {};
+  CATS.forEach(k => { catStats[k] = { good: 0, normal: 0, concern: 0 }; });
+
+  recent.forEach(r => {
+    const sel = typeof r.selections === 'string' ? JSON.parse(r.selections) : (r.selections || {});
+    Object.entries(sel).forEach(([cat, rank]) => {
+      if (catStats[cat] && ['good','normal','concern'].includes(rank)) catStats[cat][rank]++;
+    });
+  });
+
+  const byDate = {};
+  dates.forEach(d => { byDate[d] = []; });
+  recent.forEach(r => {
+    if (byDate[r.record_date]) byDate[r.record_date].push(r.user_name);
+  });
+
+  const alerts = CATS
+    .filter(k => catStats[k].concern > 0)
+    .sort((a, b) => catStats[b].concern - catStats[a].concern);
+
+  res.json({
+    dates,
+    catStats,
+    byDate,
+    alerts,
+    contributors: [...new Set(recent.map(r => r.user_name))],
+    totalRecords: recent.length,
+  });
+});
+
 // 秘書アシスタント
 app.post('/api/assistant', requireAuth, async (req, res) => {
   const { messages, facilityId } = req.body;
@@ -284,9 +452,8 @@ app.post('/api/assistant', requireAuth, async (req, res) => {
     const recentMessages = messages.slice(-20);
 
     const response = await anthropic.messages.create({
-      model: 'claude-opus-4-7',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 1024,
-      thinking: { type: 'adaptive' },
       system,
       messages: recentMessages
     });

@@ -68,6 +68,37 @@ async function initDB() {
     )
   `);
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS care_records (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id),
+      record_date TEXT NOT NULL,
+      selections JSONB NOT NULL,
+      comment TEXT DEFAULT '',
+      photos JSONB DEFAULT '[]',
+      created_at TEXT NOT NULL
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS record_comments (
+      id SERIAL PRIMARY KEY,
+      record_id INTEGER REFERENCES care_records(id) ON DELETE CASCADE,
+      user_id INTEGER REFERENCES users(id),
+      body TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS record_reactions (
+      id SERIAL PRIMARY KEY,
+      record_id INTEGER REFERENCES care_records(id) ON DELETE CASCADE,
+      user_id INTEGER REFERENCES users(id),
+      UNIQUE(record_id, user_id)
+    )
+  `);
+
   const { rows } = await pool.query('SELECT COUNT(*) as count FROM users');
   if (parseInt(rows[0].count) === 0) {
     const users = [

@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Kasaneru — 週間サマリー</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:         #F6F2EC;
+      --card:       #FFFFFF;
+      --green:      #5A8A58;
+      --green-dark: #3D6B3B;
+      --green-mid:  #88B786;
+      --green-light:#EAF2E9;
+      --earth:      #C49A6C;
+      --earth-light:#F5ECDF;
+      --text:       #3B2F28;
+      --text-mid:   #6E5E55;
+      --text-soft:  #A89F98;
+      --border:     #E5DDD4;
+      --nav-h:      62px;
+
+      --good:       #4BAA4B;
+      --good-bg:    #EDF7ED;
+      --normal:     #CB9C14;
+      --normal-bg:  #FDF6E3;
+      --concern:    #D24545;
+      --concern-bg: #FDECEC;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'M PLUS Rounded 1c', 'Hiragino Maru Gothic ProN', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      padding-bottom: calc(var(--nav-h) + 16px);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 18px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 1px 10px rgba(0,0,0,0.06);
+    }
+
+    .header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .logo { display: flex; align-items: center; gap: 10px; }
+
+    .logo-leaf {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--green), #88B786);
+      border-radius: 11px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 19px;
+      box-shadow: 0 2px 8px rgba(90,138,88,0.3);
+    }
+
+    .logo-text h1 { font-size: 18px; font-weight: 800; color: var(--green-dark); }
+    .logo-text p  { font-size: 10px; color: var(--text-soft); margin-top: 1px; }
+
+    .reload-btn {
+      width: 34px; height: 34px;
+      border: none; background: var(--bg); border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; cursor: pointer; color: var(--text-mid);
+    }
+
+    /* ── PERIOD TABS ── */
+    .period-tabs {
+      display: flex;
+      gap: 6px;
+    }
+
+    .period-btn {
+      flex: 1;
+      padding: 7px 0;
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      background: var(--bg);
+      font-size: 12px;
+      font-weight: 700;
+      font-family: inherit;
+      color: var(--text-soft);
+      cursor: pointer;
+      transition: all 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .period-btn.active {
+      border-color: var(--green);
+      background: var(--green-light);
+      color: var(--green-dark);
+    }
+
+    /* ── CONTENT ── */
+    .content {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 14px 14px 0;
+    }
+
+    /* ── SECTION LABEL ── */
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-soft);
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      margin-top: 20px;
+    }
+
+    /* ── OVERALL CARD ── */
+    .overall-card {
+      border-radius: 18px;
+      padding: 20px 18px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 3px 14px rgba(0,0,0,0.09);
+    }
+
+    .overall-card.great  { background: linear-gradient(135deg, #EDF7ED, #D5EDCF); }
+    .overall-card.ok     { background: linear-gradient(135deg, #FDF6E3, #F5EDCA); }
+    .overall-card.warn   { background: linear-gradient(135deg, #FFF3E0, #FFE0B2); }
+    .overall-card.alert  { background: linear-gradient(135deg, #FDECEC, #FAD7D7); }
+
+    .overall-icon { font-size: 48px; flex-shrink: 0; line-height: 1; }
+
+    .overall-text-wrap { flex: 1; min-width: 0; }
+
+    .overall-title {
+      font-size: 17px;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .overall-card.great .overall-title { color: var(--green-dark); }
+    .overall-card.ok    .overall-title { color: #7A6B00; }
+    .overall-card.warn  .overall-title { color: #8B4A00; }
+    .overall-card.alert .overall-title { color: var(--concern); }
+
+    .overall-meta {
+      font-size: 12px;
+      color: var(--text-mid);
+      font-weight: 500;
+    }
+
+    .overall-chips {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+
+    .stat-chip {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.65);
+      color: var(--text-mid);
+    }
+
+    /* ── ALERT SECTION ── */
+    .alert-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .alert-row {
+      background: var(--concern-bg);
+      border: 1.5px solid #F0B8B8;
+      border-radius: 14px;
+      padding: 13px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .alert-icon { font-size: 24px; flex-shrink: 0; }
+
+    .alert-meta { flex: 1; }
+    .alert-name { font-size: 14px; font-weight: 700; color: var(--text); }
+    .alert-count { font-size: 12px; color: var(--concern); font-weight: 600; margin-top: 2px; }
+
+    .alert-bar-wrap {
+      width: 60px;
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .alert-bar-fill {
+      height: 100%;
+      background: var(--concern);
+      border-radius: 3px;
+    }
+
+    /* ── CATEGORY BARS ── */
+    .cat-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .cat-row {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 12px 14px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+    }
+
+    .cat-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .cat-head {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .cat-icon { font-size: 18px; }
+
+    .cat-counts {
+      font-size: 11px;
+      color: var(--text-soft);
+      font-weight: 600;
+      display: flex;
+      gap: 6px;
+    }
+
+    .count-good    { color: var(--good); }
+    .count-normal  { color: var(--normal); }
+    .count-concern { color: var(--concern); font-weight: 800; }
+
+    .stacked-bar {
+      height: 8px;
+      border-radius: 4px;
+      overflow: hidden;
+      background: var(--bg);
+      display: flex;
+    }
+
+    .bar-seg {
+      height: 100%;
+      transition: width 0.6s ease;
+    }
+
+    .bar-seg.good    { background: var(--good); }
+    .bar-seg.normal  { background: var(--normal); }
+    .bar-seg.concern { background: var(--concern); }
+    .bar-seg.empty   { background: var(--border); width: 100%; }
+
+    /* ── DAILY CALENDAR ── */
+    .day-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+    }
+
+    .day-cell {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 9px 4px;
+      text-align: center;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.05);
+    }
+
+    .day-cell.has-record { background: var(--green-light); }
+    .day-cell.today { box-shadow: 0 0 0 2px var(--green); }
+
+    .day-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-soft);
+      margin-bottom: 4px;
+    }
+
+    .day-cell.has-record .day-label { color: var(--green-dark); }
+
+    .day-dot {
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px;
+      margin: 0 auto;
+    }
+
+    .day-cell.has-record .day-dot {
+      background: var(--green);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .day-cell:not(.has-record) .day-dot {
+      background: var(--bg);
+      color: var(--text-soft);
+      font-size: 14px;
+    }
+
+    /* ── CONTRIBUTORS ── */
+    .contributor-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .contributor-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--card);
+      border-radius: 14px;
+      padding: 10px 14px 10px 10px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+    }
+
+    .contributor-avatar {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 800; color: #fff;
+    }
+
+    .contributor-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    /* ── EMPTY ── */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-soft);
+    }
+
+    .empty-icon  { font-size: 52px; margin-bottom: 14px; }
+    .empty-title { font-size: 16px; font-weight: 700; color: var(--text-mid); margin-bottom: 8px; }
+    .empty-sub   { font-size: 13px; line-height: 1.6; }
+
+    /* ── LOADING ── */
+    .loading { text-align: center; padding: 60px 20px; font-size: 14px; color: var(--text-soft); }
+
+    /* ── BOTTOM NAV ── */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: var(--nav-h);
+      background: var(--card);
+      border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-around;
+      padding-bottom: env(safe-area-inset-bottom);
+      z-index: 90;
+      box-shadow: 0 -2px 12px rgba(0,0,0,0.06);
+    }
+
+    .nav-item {
+      flex: 1;
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      text-decoration: none;
+      padding: 8px 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .nav-icon  { font-size: 20px; line-height: 1; }
+    .nav-label { font-size: 9px; font-weight: 700; color: var(--text-soft); }
+    .nav-item.active .nav-label { color: var(--green); }
+
+    .nav-post {
+      width: 46px; height: 46px;
+      background: linear-gradient(135deg, var(--green), var(--green-dark));
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px;
+      box-shadow: 0 4px 14px rgba(58,107,57,0.45);
+      text-decoration: none;
+      flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<header class="header">
+  <div class="header-row">
+    <div class="logo">
+      <div class="logo-leaf">🍃</div>
+      <div class="logo-text">
+        <h1>週間サマリー</h1>
+        <p id="dateRange">—</p>
+      </div>
+    </div>
+    <button class="reload-btn" onclick="load()" type="button">🔄</button>
+  </div>
+  <div class="period-tabs">
+    <button class="period-btn active" data-days="7"  onclick="setPeriod(7,  this)">7日間</button>
+    <button class="period-btn"        data-days="14" onclick="setPeriod(14, this)">14日間</button>
+    <button class="period-btn"        data-days="30" onclick="setPeriod(30, this)">30日間</button>
+  </div>
+</header>
+
+<!-- ── MAIN ── -->
+<main class="content" id="main">
+  <div class="loading">📊 サマリーを読み込み中...</div>
+</main>
+
+<!-- ── BOTTOM NAV ── -->
+<nav class="bottom-nav">
+  <a href="/kasaneru-feed.html" class="nav-item">
+    <span class="nav-icon">🏠</span>
+    <span class="nav-label">フィード</span>
+  </a>
+  <a href="/kasaneru-post.html" class="nav-post" aria-label="記録">➕</a>
+  <a href="/kasaneru-summary.html" class="nav-item active">
+    <span class="nav-icon">📊</span>
+    <span class="nav-label">サマリー</span>
+  </a>
+  <a href="/kasaneru-profile.html" class="nav-item">
+    <span class="nav-icon">👤</span>
+    <span class="nav-label">プロフィール</span>
+  </a>
+</nav>
+
+<script>
+'use strict';
+
+const CATS = [
+  { key: 'meal',     icon: '🍽️', label: '食事' },
+  { key: 'bath',     icon: '🛁',  label: 'お風呂' },
+  { key: 'change',   icon: '👕',  label: '着替え' },
+  { key: 'toilet',   icon: '🚽',  label: '排泄' },
+  { key: 'move',     icon: '🚶',  label: '移動' },
+  { key: 'groom',    icon: '🪥',  label: '整容' },
+  { key: 'mood',     icon: '😊',  label: '気分・様子' },
+  { key: 'medicine', icon: '💊',  label: '服薬' },
+];
+
+const AVATAR_COLORS = ['#5A8A58','#5B7FA6','#C47E5A','#8A5AB4','#A65B5B','#5A8A8A'];
+const DAY_LABELS    = ['日','月','火','水','木','金','土'];
+
+let currentDays = 7;
+
+function colorFor(name) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffffffff;
+  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+}
+
+function setPeriod(days, btn) {
+  currentDays = days;
+  document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  load();
+}
+
+async function load() {
+  document.getElementById('main').innerHTML = '<div class="loading">📊 読み込み中...</div>';
+  try {
+    const res = await fetch(`/api/kasaneru/summary?days=${currentDays}`);
+    if (res.status === 401) { location.href = '/kasaneru-login.html'; return; }
+    const data = await res.json();
+    render(data);
+  } catch {
+    document.getElementById('main').innerHTML =
+      '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">読み込みに失敗しました</div></div>';
+  }
+}
+
+function render(data) {
+  const { dates, catStats, byDate, alerts, contributors, totalRecords } = data;
+
+  // Date range label
+  if (dates.length > 0) {
+    document.getElementById('dateRange').textContent = `${dates[0]} 〜 ${dates[dates.length-1]}`;
+  }
+
+  if (totalRecords === 0) {
+    document.getElementById('main').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🌱</div>
+        <div class="empty-title">この期間の記録がありません</div>
+        <div class="empty-sub">記録を投稿すると<br>ここにサマリーが表示されます</div>
+      </div>
+    `;
+    return;
+  }
+
+  // ── Overall status ──
+  const totalConcern = Object.values(catStats).reduce((s, v) => s + v.concern, 0);
+  const totalGood    = Object.values(catStats).reduce((s, v) => s + v.good, 0);
+  const totalAll     = Object.values(catStats).reduce((s, v) => s + v.good + v.normal + v.concern, 0);
+  const goodRate     = totalAll > 0 ? totalGood / totalAll : 0;
+
+  let overallClass, overallIcon, overallTitle;
+  if (totalConcern === 0 && goodRate >= 0.8) {
+    overallClass = 'great'; overallIcon = '🌿'; overallTitle = '今週は概ね良好です';
+  } else if (totalConcern <= 2 && goodRate >= 0.6) {
+    overallClass = 'ok';   overallIcon = '🌱'; overallTitle = '普通の1週間でした';
+  } else if (totalConcern <= 5) {
+    overallClass = 'warn'; overallIcon = '🍂'; overallTitle = '気になる点があります';
+  } else {
+    overallClass = 'alert'; overallIcon = '⚠️'; overallTitle = '注意が必要な項目があります';
+  }
+
+  const recordedDays = Object.values(byDate).filter(r => r.length > 0).length;
+
+  // ── Alerts ──
+  const alertsHtml = alerts.length === 0 ? '' : `
+    <p class="section-label">⚠️ 気になる項目</p>
+    <div class="alert-list">
+      ${alerts.map(k => {
+        const cat = CATS.find(c => c.key === k);
+        const s = catStats[k];
+        const total = s.good + s.normal + s.concern;
+        const pct = total > 0 ? Math.round(s.concern / total * 100) : 0;
+        return `
+          <div class="alert-row">
+            <div class="alert-icon">${cat.icon}</div>
+            <div class="alert-meta">
+              <div class="alert-name">${cat.label}</div>
+              <div class="alert-count">🔴 気になる ${s.concern}件</div>
+            </div>
+            <div class="alert-bar-wrap">
+              <div class="alert-bar-fill" style="width:${pct}%"></div>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+
+  // ── Category bars ──
+  const catHtml = CATS.map(cat => {
+    const s = catStats[cat.key];
+    const total = s.good + s.normal + s.concern;
+    if (total === 0) return `
+      <div class="cat-row">
+        <div class="cat-top">
+          <div class="cat-head">
+            <span class="cat-icon">${cat.icon}</span><span>${cat.label}</span>
+          </div>
+          <div class="cat-counts"><span style="color:var(--text-soft)">記録なし</span></div>
+        </div>
+        <div class="stacked-bar"><div class="bar-seg empty"></div></div>
+      </div>
+    `;
+    const gPct = Math.round(s.good    / total * 100);
+    const nPct = Math.round(s.normal  / total * 100);
+    const cPct = 100 - gPct - nPct;
+    return `
+      <div class="cat-row">
+        <div class="cat-top">
+          <div class="cat-head">
+            <span class="cat-icon">${cat.icon}</span><span>${cat.label}</span>
+          </div>
+          <div class="cat-counts">
+            ${s.good    > 0 ? `<span class="count-good">🟢${s.good}</span>` : ''}
+            ${s.normal  > 0 ? `<span class="count-normal">🟡${s.normal}</span>` : ''}
+            ${s.concern > 0 ? `<span class="count-concern">🔴${s.concern}</span>` : ''}
+          </div>
+        </div>
+        <div class="stacked-bar">
+          ${gPct > 0 ? `<div class="bar-seg good"    style="width:${gPct}%"></div>` : ''}
+          ${nPct > 0 ? `<div class="bar-seg normal"  style="width:${nPct}%"></div>` : ''}
+          ${cPct > 0 ? `<div class="bar-seg concern" style="width:${cPct}%"></div>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // ── Daily calendar ──
+  const todayStr = new Date().toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' });
+  const dayHtml = dates.map(d => {
+    const recUsers = byDate[d] || [];
+    const hasRec   = recUsers.length > 0;
+    const isToday  = d === todayStr;
+    const date     = parseJaDate(d);
+    const dayLabel = date ? DAY_LABELS[date.getDay()] : '—';
+    const dayNum   = date ? date.getDate() : '—';
+    return `
+      <div class="day-cell ${hasRec ? 'has-record' : ''} ${isToday ? 'today' : ''}">
+        <div class="day-label">${dayLabel}</div>
+        <div class="day-dot">${hasRec ? dayNum : '·'}</div>
+      </div>
+    `;
+  }).join('');
+
+  // ── Contributors ──
+  const contribHtml = contributors.length === 0
+    ? '<p style="color:var(--text-soft);font-size:13px;">まだ記録者がいません</p>'
+    : `<div class="contributor-row">${
+        contributors.map(name => `
+          <div class="contributor-chip">
+            <div class="contributor-avatar" style="background:${colorFor(name)}">${name[0]}</div>
+            <div class="contributor-name">${escHtml(name)}</div>
+          </div>
+        `).join('')
+      }</div>`;
+
+  document.getElementById('main').innerHTML = `
+    <div class="overall-card ${overallClass}">
+      <div class="overall-icon">${overallIcon}</div>
+      <div class="overall-text-wrap">
+        <div class="overall-title">${overallTitle}</div>
+        <div class="overall-meta">${currentDays}日間の記録</div>
+        <div class="overall-chips">
+          <span class="stat-chip">📋 ${totalRecords}件</span>
+          <span class="stat-chip">📅 ${recordedDays}日記録</span>
+          <span class="stat-chip">👥 ${contributors.length}人参加</span>
+        </div>
+      </div>
+    </div>
+
+    ${alertsHtml}
+
+    <p class="section-label">カテゴリー別</p>
+    <div class="cat-list">${catHtml}</div>
+
+    <p class="section-label">記録日</p>
+    <div class="day-grid">${dayHtml}</div>
+
+    <p class="section-label">今期の記録者</p>
+    ${contribHtml}
+
+    <div style="height:4px;"></div>
+  `;
+}
+
+function parseJaDate(str) {
+  if (!str) return null;
+  const m = str.match(/(\d{4})\/(\d{1,2})\/(\d{1,2})/);
+  if (!m) return null;
+  return new Date(+m[1], +m[2]-1, +m[3]);
+}
+
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+load();
+</script>
+</body>
+</html>
