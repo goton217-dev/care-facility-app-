@@ -18,6 +18,7 @@
       --earth-light:   #F5ECDF;
       --night:         #252D45;
       --text:          #3B2F28;
+      --nav-h:         62px;
       --text-mid:      #6E5E55;
       --text-soft:     #A89F98;
       --border:        #E5DDD4;
@@ -40,7 +41,7 @@
       background: var(--bg);
       color: var(--text);
       min-height: 100dvh;
-      padding-bottom: 110px;
+      padding-bottom: calc(var(--nav-h) + 80px);
       -webkit-font-smoothing: antialiased;
     }
 
@@ -358,13 +359,54 @@
     /* ── SUBMIT ─────────────────────────── */
     .submit-wrap {
       position: fixed;
-      bottom: 0;
+      bottom: var(--nav-h);
       left: 0;
       right: 0;
-      padding: 12px 14px;
-      padding-bottom: max(14px, env(safe-area-inset-bottom));
-      background: linear-gradient(to top, var(--bg) 70%, transparent 100%);
+      padding: 12px 14px 10px;
+      background: linear-gradient(to top, var(--bg) 65%, transparent 100%);
       z-index: 80;
+    }
+
+    /* ── BOTTOM NAV ─────────────────────── */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: var(--nav-h);
+      background: var(--card);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      padding-bottom: env(safe-area-inset-bottom);
+      z-index: 90;
+      box-shadow: 0 -2px 12px rgba(0,0,0,0.06);
+    }
+
+    .nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      text-decoration: none;
+      padding: 8px 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .nav-icon  { font-size: 22px; line-height: 1; }
+    .nav-label { font-size: 10px; font-weight: 700; color: var(--text-soft); }
+    .nav-item.active .nav-label { color: var(--green); }
+
+    .nav-post {
+      width: 50px; height: 50px;
+      background: linear-gradient(135deg, var(--green), var(--green-dark));
+      border-radius: 16px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px;
+      box-shadow: 0 4px 14px rgba(58,107,57,0.45);
+      text-decoration: none;
+      flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
     }
 
     .submit-btn {
@@ -575,6 +617,19 @@
   </button>
 </div>
 
+<!-- ── BOTTOM NAV ── -->
+<nav class="bottom-nav">
+  <a href="/kasaneru-feed.html" class="nav-item">
+    <span class="nav-icon">🏠</span>
+    <span class="nav-label">フィード</span>
+  </a>
+  <a href="/kasaneru-post.html" class="nav-post" aria-label="記録を投稿">➕</a>
+  <a href="/kasaneru-post.html" class="nav-item active">
+    <span class="nav-icon">✏️</span>
+    <span class="nav-label">記録する</span>
+  </a>
+</nav>
+
 <!-- ── TOAST ── -->
 <div class="toast" id="toast"></div>
 
@@ -693,11 +748,16 @@ document.getElementById('photoInput').addEventListener('change', function() {
     return;
   }
 
-  files.slice(0, remaining).forEach(file => {
+  const toLoad = files.slice(0, remaining);
+  let done = 0;
+  toLoad.forEach(file => {
     const reader = new FileReader();
     reader.onload = e => {
-      photos.push(e.target.result);
-      renderPhotos();
+      compressPhoto(e.target.result, compressed => {
+        photos.push(compressed);
+        done++;
+        if (done === toLoad.length) renderPhotos();
+      });
     };
     reader.readAsDataURL(file);
   });
@@ -723,6 +783,22 @@ function removePhoto(index) {
   renderPhotos();
 }
 
+// ── COMPRESS ──────────────────────────────
+function compressPhoto(dataUrl, cb) {
+  const img = new Image();
+  img.onload = () => {
+    const MAX = 600;
+    const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+    const w = Math.round(img.width * scale);
+    const h = Math.round(img.height * scale);
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+    cb(canvas.toDataURL('image/jpeg', 0.72));
+  };
+  img.src = dataUrl;
+}
+
 // ── TOAST ─────────────────────────────────
 function showToast(msg) {
   const el = document.getElementById('toast');
@@ -733,45 +809,46 @@ function showToast(msg) {
 }
 
 // ── SUBMIT ────────────────────────────────
-function submitRecord() {
+async function submitRecord() {
   const done = Object.keys(selections).length;
-
   if (done === 0) {
     showToast('少なくとも1つのカテゴリーを記録してください 🌱');
     return;
   }
 
-  const record = {
-    date:       new Date().toISOString(),
-    selections: { ...selections },
-    comment:    document.getElementById('commentInput').value.trim(),
-    photos:     photos.length,
-  };
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.querySelector('span:last-child').textContent = '送信中...';
 
-  console.log('[Kasaneru] 送信データ:', record);
+  try {
+    const res = await fetch('/api/kasaneru/records', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        selections: { ...selections },
+        comment: document.getElementById('commentInput').value.trim(),
+        photos,
+      }),
+    });
 
-  // Show success
-  const overlay = document.getElementById('successOverlay');
-  overlay.classList.add('visible');
+    if (res.status === 401) { location.href = '/'; return; }
+    if (!res.ok) throw new Error('送信失敗');
 
-  const icons = ['🌿','🍃','🌱','🌾','🌼'];
-  document.getElementById('successIcon').textContent =
-    icons[Math.floor(Math.random() * icons.length)];
+    const overlay = document.getElementById('successOverlay');
+    overlay.classList.add('visible');
+    const icons = ['🌿','🍃','🌱','🌾','🌼'];
+    document.getElementById('successIcon').textContent =
+      icons[Math.floor(Math.random() * icons.length)];
 
-  setTimeout(() => {
-    overlay.classList.remove('visible');
-    resetForm();
-  }, 2400);
-}
+    setTimeout(() => {
+      location.href = '/kasaneru-feed.html';
+    }, 1800);
 
-function resetForm() {
-  selections = {};
-  photos = [];
-  document.getElementById('commentInput').value = '';
-  buildGrid();
-  renderPhotos();
-  updateProgress();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  } catch {
+    showToast('送信に失敗しました。もう一度お試しください。');
+    btn.disabled = false;
+    btn.querySelector('span:last-child').textContent = '今日の記録を家族に共有する';
+  }
 }
 
 // ── INIT ──────────────────────────────────

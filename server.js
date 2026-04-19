@@ -198,6 +198,70 @@ app.delete('/api/vitals/:id', requireFamily, async (req, res) => {
   res.json({ ok: true });
 });
 
+// ── Kasaneru: 介護記録 ────────────────────────────────────
+
+// 記録一覧
+app.get('/api/kasaneru/records', requireAuth, async (req, res) => {
+  const { rows } = await pool.query(`
+    SELECT r.*, u.name as user_name,
+           COUNT(rr.id)::int as reaction_count
+    FROM care_records r
+    LEFT JOIN users u ON r.user_id = u.id
+    LEFT JOIN record_reactions rr ON rr.record_id = r.id
+    GROUP BY r.id, u.name
+    ORDER BY r.created_at DESC
+    LIMIT 50
+  `);
+  res.json(rows);
+});
+
+// 自分がリアクション済みの記録IDリスト
+app.get('/api/kasaneru/my-reactions', requireAuth, async (req, res) => {
+  const { rows } = await pool.query(
+    'SELECT record_id FROM record_reactions WHERE user_id = $1',
+    [req.session.user.id]
+  );
+  res.json(rows.map(r => r.record_id));
+});
+
+// 記録を投稿
+app.post('/api/kasaneru/records', requireAuth, async (req, res) => {
+  const { selections, comment, photos } = req.body;
+  if (!selections || typeof selections !== 'object') {
+    return res.status(400).json({ error: '記録データが不正です' });
+  }
+  const { rows } = await pool.query(
+    `INSERT INTO care_records (user_id, record_date, selections, comment, photos, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+    [
+      req.session.user.id,
+      new Date().toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' }),
+      JSON.stringify(selections),
+      comment || '',
+      JSON.stringify(photos || []),
+      now()
+    ]
+  );
+  res.json({ id: rows[0].id });
+});
+
+// リアクションをトグル
+app.post('/api/kasaneru/records/:id/react', requireAuth, async (req, res) => {
+  const record_id = parseInt(req.params.id);
+  const user_id = req.session.user.id;
+  const { rows } = await pool.query(
+    'SELECT id FROM record_reactions WHERE record_id=$1 AND user_id=$2',
+    [record_id, user_id]
+  );
+  if (rows.length > 0) {
+    await pool.query('DELETE FROM record_reactions WHERE record_id=$1 AND user_id=$2', [record_id, user_id]);
+    res.json({ reacted: false });
+  } else {
+    await pool.query('INSERT INTO record_reactions (record_id, user_id) VALUES ($1,$2)', [record_id, user_id]);
+    res.json({ reacted: true });
+  }
+});
+
 // 秘書アシスタント
 app.post('/api/assistant', requireAuth, async (req, res) => {
   const { messages, facilityId } = req.body;
