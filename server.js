@@ -270,6 +270,60 @@ app.post('/api/kasaneru/records/:id/react', requireAuth, async (req, res) => {
   }
 });
 
+// ── Kasaneru: 週間サマリー ────────────────────────────────
+app.get('/api/kasaneru/summary', requireAuth, async (req, res) => {
+  const days = Math.min(30, Math.max(7, parseInt(req.query.days) || 7));
+
+  const { rows } = await pool.query(`
+    SELECT r.*, u.name as user_name
+    FROM care_records r
+    LEFT JOIN users u ON r.user_id = u.id
+    ORDER BY r.created_at DESC
+    LIMIT 500
+  `);
+
+  // 対象日付リスト（今日含む過去N日）
+  const today = new Date();
+  const dates = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    dates.push(d.toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' }));
+  }
+
+  const recent = rows.filter(r => dates.includes(r.record_date));
+
+  const CATS = ['meal','bath','change','toilet','move','groom','mood','medicine'];
+  const catStats = {};
+  CATS.forEach(k => { catStats[k] = { good: 0, normal: 0, concern: 0 }; });
+
+  recent.forEach(r => {
+    const sel = typeof r.selections === 'string' ? JSON.parse(r.selections) : (r.selections || {});
+    Object.entries(sel).forEach(([cat, rank]) => {
+      if (catStats[cat] && ['good','normal','concern'].includes(rank)) catStats[cat][rank]++;
+    });
+  });
+
+  const byDate = {};
+  dates.forEach(d => { byDate[d] = []; });
+  recent.forEach(r => {
+    if (byDate[r.record_date]) byDate[r.record_date].push(r.user_name);
+  });
+
+  const alerts = CATS
+    .filter(k => catStats[k].concern > 0)
+    .sort((a, b) => catStats[b].concern - catStats[a].concern);
+
+  res.json({
+    dates,
+    catStats,
+    byDate,
+    alerts,
+    contributors: [...new Set(recent.map(r => r.user_name))],
+    totalRecords: recent.length,
+  });
+});
+
 // 秘書アシスタント
 app.post('/api/assistant', requireAuth, async (req, res) => {
   const { messages, facilityId } = req.body;
