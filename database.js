@@ -81,6 +81,16 @@ async function initDB() {
   `);
 
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS record_comments (
+      id SERIAL PRIMARY KEY,
+      record_id INTEGER REFERENCES care_records(id) ON DELETE CASCADE,
+      user_id INTEGER REFERENCES users(id),
+      body TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    )
+  `);
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS record_reactions (
       id SERIAL PRIMARY KEY,
       record_id INTEGER REFERENCES care_records(id) ON DELETE CASCADE,

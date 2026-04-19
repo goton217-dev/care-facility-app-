@@ -208,19 +208,47 @@ app.get('/api/kasaneru/members', async (req, res) => {
 
 // ── Kasaneru: 介護記録 ────────────────────────────────────
 
-// 記録一覧
+// 記録一覧（リアクション数・コメント数を含む）
 app.get('/api/kasaneru/records', requireAuth, async (req, res) => {
   const { rows } = await pool.query(`
     SELECT r.*, u.name as user_name,
-           COUNT(rr.id)::int as reaction_count
+           COUNT(DISTINCT rr.id)::int as reaction_count,
+           COUNT(DISTINCT rc.id)::int as comment_count
     FROM care_records r
     LEFT JOIN users u ON r.user_id = u.id
     LEFT JOIN record_reactions rr ON rr.record_id = r.id
+    LEFT JOIN record_comments rc ON rc.record_id = r.id
     GROUP BY r.id, u.name
     ORDER BY r.created_at DESC
     LIMIT 50
   `);
   res.json(rows);
+});
+
+// コメント一覧
+app.get('/api/kasaneru/records/:id/comments', requireAuth, async (req, res) => {
+  const { rows } = await pool.query(`
+    SELECT c.*, u.name as user_name
+    FROM record_comments c
+    LEFT JOIN users u ON c.user_id = u.id
+    WHERE c.record_id = $1
+    ORDER BY c.created_at ASC
+  `, [parseInt(req.params.id)]);
+  res.json(rows);
+});
+
+// コメントを追加
+app.post('/api/kasaneru/records/:id/comments', requireAuth, async (req, res) => {
+  const record_id = parseInt(req.params.id);
+  const { body } = req.body;
+  if (!body?.trim()) return res.status(400).json({ error: 'コメントを入力してください' });
+  const { rows } = await pool.query(
+    `INSERT INTO record_comments (record_id, user_id, body, created_at)
+     VALUES ($1, $2, $3, $4) RETURNING *`,
+    [record_id, req.session.user.id, body.trim(), now()]
+  );
+  const userRes = await pool.query('SELECT name FROM users WHERE id=$1', [req.session.user.id]);
+  res.json({ ...rows[0], user_name: userRes.rows[0]?.name });
 });
 
 // 自分がリアクション済みの記録IDリスト

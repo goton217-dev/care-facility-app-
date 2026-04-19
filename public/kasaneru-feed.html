@@ -310,6 +310,165 @@
       font-size: 14px;
     }
 
+    /* ── COMMENT SHEET ── */
+    .sheet-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 180;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.28s ease;
+    }
+
+    .sheet-backdrop.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .comment-sheet {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: var(--card);
+      border-radius: 20px 20px 0 0;
+      z-index: 190;
+      max-height: 75dvh;
+      display: flex;
+      flex-direction: column;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .comment-sheet.open {
+      transform: translateY(0);
+    }
+
+    .sheet-handle {
+      width: 36px; height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      margin: 10px auto 0;
+      flex-shrink: 0;
+    }
+
+    .sheet-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 18px 10px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .sheet-title { font-size: 15px; font-weight: 800; color: var(--text); }
+
+    .sheet-close {
+      width: 30px; height: 30px;
+      border: none; background: var(--bg);
+      border-radius: 50%;
+      font-size: 14px; color: var(--text-mid);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+
+    .comments-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 60px;
+    }
+
+    .comment-item {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .comment-avatar {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 800; color: #fff;
+      flex-shrink: 0;
+    }
+
+    .comment-bubble { flex: 1; min-width: 0; }
+
+    .comment-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-mid);
+      margin-bottom: 3px;
+    }
+
+    .comment-text {
+      font-size: 14px;
+      color: var(--text);
+      line-height: 1.55;
+      background: var(--bg);
+      border-radius: 0 12px 12px 12px;
+      padding: 8px 12px;
+      word-break: break-word;
+    }
+
+    .comment-time {
+      font-size: 10px;
+      color: var(--text-soft);
+      margin-top: 4px;
+      padding-left: 2px;
+    }
+
+    .no-comments {
+      text-align: center;
+      padding: 20px;
+      color: var(--text-soft);
+      font-size: 13px;
+    }
+
+    .sheet-input-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+      padding: 10px 14px 12px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .sheet-textarea {
+      flex: 1;
+      background: var(--bg);
+      border: none;
+      border-radius: 18px;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-family: inherit;
+      color: var(--text);
+      resize: none;
+      outline: none;
+      max-height: 100px;
+      line-height: 1.5;
+    }
+
+    .sheet-textarea::placeholder { color: var(--text-soft); }
+
+    .sheet-send {
+      width: 38px; height: 38px;
+      background: linear-gradient(135deg, var(--green), var(--green-dark));
+      border: none; border-radius: 50%;
+      color: #fff; font-size: 17px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: transform 0.12s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .sheet-send:active { transform: scale(0.9); }
+    .sheet-send:disabled { opacity: 0.4; }
+
     /* ── BOTTOM NAV ── */
     .bottom-nav {
       position: fixed;
@@ -417,6 +576,26 @@
     <span class="nav-label">プロフィール</span>
   </a>
 </nav>
+
+<!-- ── COMMENT SHEET ── -->
+<div class="sheet-backdrop" id="backdrop" onclick="closeSheet()"></div>
+<div class="comment-sheet" id="commentSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <span class="sheet-title">💬 コメント</span>
+    <button class="sheet-close" onclick="closeSheet()" type="button">✕</button>
+  </div>
+  <div class="comments-list" id="commentsList">
+    <div class="no-comments">読み込み中...</div>
+  </div>
+  <div class="sheet-input-row">
+    <textarea class="sheet-textarea" id="commentInput" rows="1"
+      placeholder="コメントを入力..."
+      oninput="autoResize(this)"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendComment();}"></textarea>
+    <button class="sheet-send" id="sendBtn" onclick="sendComment()" type="button">➤</button>
+  </div>
+</div>
 
 <script>
 'use strict';
@@ -605,6 +784,13 @@ function buildCard(r) {
           <span>${reacted ? '❤️' : '🤍'}</span>
           <span class="react-count" id="rcount-${r.id}">${r.reaction_count || 0}</span>
         </button>
+        <button class="react-btn"
+          id="comment-btn-${r.id}"
+          onclick="openSheet(${r.id})"
+          type="button">
+          <span>💬</span>
+          <span class="react-count" id="ccount-${r.id}">${r.comment_count || 0}</span>
+        </button>
         <span class="time-label">${relativeTime(r.created_at)}</span>
       </div>
     </div>
@@ -649,6 +835,88 @@ function scrollToUser(name) {
 function escHtml(s) {
   if (!s && s !== 0) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── COMMENT SHEET ─────────────────────────
+let activeRecordId = null;
+
+function openSheet(recordId) {
+  activeRecordId = recordId;
+  document.getElementById('commentInput').value = '';
+  document.getElementById('commentsList').innerHTML = '<div class="no-comments">読み込み中...</div>';
+  document.getElementById('backdrop').classList.add('open');
+  document.getElementById('commentSheet').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  loadComments(recordId);
+}
+
+function closeSheet() {
+  activeRecordId = null;
+  document.getElementById('backdrop').classList.remove('open');
+  document.getElementById('commentSheet').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+async function loadComments(recordId) {
+  try {
+    const comments = await apiFetch(`/api/kasaneru/records/${recordId}/comments`);
+    renderComments(comments);
+  } catch {
+    document.getElementById('commentsList').innerHTML =
+      '<div class="no-comments">読み込みに失敗しました</div>';
+  }
+}
+
+function renderComments(comments) {
+  const list = document.getElementById('commentsList');
+  if (comments.length === 0) {
+    list.innerHTML = '<div class="no-comments">まだコメントがありません。<br>最初のコメントを書いてみましょう 🌱</div>';
+    return;
+  }
+  list.innerHTML = comments.map(c => `
+    <div class="comment-item">
+      <div class="comment-avatar" style="background:${colorFor(c.user_name || '?')}">${initial(c.user_name)}</div>
+      <div class="comment-bubble">
+        <div class="comment-name">${escHtml(c.user_name)}</div>
+        <div class="comment-text">${escHtml(c.body)}</div>
+        <div class="comment-time">${relativeTime(c.created_at)}</div>
+      </div>
+    </div>
+  `).join('');
+  list.scrollTop = list.scrollHeight;
+}
+
+async function sendComment() {
+  const input = document.getElementById('commentInput');
+  const body  = input.value.trim();
+  if (!body || !activeRecordId) return;
+
+  const btn = document.getElementById('sendBtn');
+  btn.disabled = true;
+
+  try {
+    await apiFetch(`/api/kasaneru/records/${activeRecordId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ body }),
+    });
+    input.value = '';
+    input.style.height = '';
+    await loadComments(activeRecordId);
+
+    // Update count on card
+    const countEl = document.getElementById(`ccount-${activeRecordId}`);
+    if (countEl) countEl.textContent = parseInt(countEl.textContent || '0') + 1;
+
+    if (navigator.vibrate) navigator.vibrate(8);
+  } catch {}
+
+  btn.disabled = false;
+  input.focus();
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 100) + 'px';
 }
 
 // ── INIT ──
