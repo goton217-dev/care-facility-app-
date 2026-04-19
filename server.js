@@ -284,9 +284,8 @@ app.post('/api/assistant', requireAuth, async (req, res) => {
     const recentMessages = messages.slice(-20);
 
     const response = await anthropic.messages.create({
-      model: 'claude-opus-4-7',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 1024,
-      thinking: { type: 'adaptive' },
       system,
       messages: recentMessages
     });
