@@ -270,6 +270,20 @@ app.post('/api/kasaneru/records/:id/react', requireAuth, async (req, res) => {
   }
 });
 
+// ── Kasaneru: 自分の記録履歴 ─────────────────────────────
+app.get('/api/kasaneru/my-records', requireAuth, async (req, res) => {
+  const { rows } = await pool.query(`
+    SELECT r.*, COUNT(rr.id)::int as reaction_count
+    FROM care_records r
+    LEFT JOIN record_reactions rr ON rr.record_id = r.id
+    WHERE r.user_id = $1
+    GROUP BY r.id
+    ORDER BY r.created_at DESC
+    LIMIT 100
+  `, [req.session.user.id]);
+  res.json(rows);
+});
+
 // ── Kasaneru: 週間サマリー ────────────────────────────────
 app.get('/api/kasaneru/summary', requireAuth, async (req, res) => {
   const days = Math.min(30, Math.max(7, parseInt(req.query.days) || 7));
