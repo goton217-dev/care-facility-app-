@@ -3,6 +3,7 @@ const session = require('express-session');
 const path = require('path');
 const { pool, initDB, now } = require('./database');
 const Anthropic = require('@anthropic-ai/sdk');
+const { router: pipelinesRouter, initPipelines } = require('./routes/pipelines');
 
 const anthropic = new Anthropic();
 
@@ -11,6 +12,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/api/pipelines', pipelinesRouter);
 app.use(session({
   secret: process.env.SESSION_SECRET || 'care-facility-secret-2024',
   resave: false,
@@ -467,6 +469,7 @@ app.post('/api/assistant', requireAuth, async (req, res) => {
 });
 
 initDB().then(() => {
+  initPipelines(pool);
   app.listen(PORT, () => {
     console.log(`\nサーバー起動中: http://localhost:${PORT}\n`);
     console.log('初期ログイン情報:');

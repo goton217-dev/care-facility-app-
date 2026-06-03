@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Antigravity CODEX — パイプラインダッシュボード</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --surface2: #334155;
+    --border: #475569;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --p1: #2563eb;
+    --p2: #059669;
+    --p3: #d97706;
+    --p4: #7c3aed;
+    --done: #10b981;
+    --fail: #ef4444;
+    --run: #f59e0b;
+    --pending: #6366f1;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+  }
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-badge {
+    background: linear-gradient(135deg, var(--p4), var(--p1));
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    padding: 4px 10px;
+    border-radius: 4px;
+  }
+  .logo-title { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
+  .logo-sub { font-size: 13px; color: var(--muted); }
+  .header-nav a {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 14px;
+    margin-left: 24px;
+  }
+  .header-nav a:hover { color: var(--text); }
+
+  main { max-width: 1400px; margin: 0 auto; padding: 32px; }
+
+  /* Stats bar */
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+  }
+  .stat-value { font-size: 36px; font-weight: 800; }
+  .stat-label { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+  /* Pipeline grid */
+  .pipeline-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+    margin-bottom: 32px;
+  }
+  .pipeline-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .pipeline-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .pipeline-card.p1::before { background: var(--p1); }
+  .pipeline-card.p2::before { background: var(--p2); }
+  .pipeline-card.p3::before { background: var(--p3); }
+  .pipeline-card.p4::before { background: var(--p4); }
+
+  .pipeline-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .pipeline-icon {
+    width: 44px; height: 44px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+  }
+  .p1 .pipeline-icon { background: #2563eb22; color: var(--p1); }
+  .p2 .pipeline-icon { background: #05966922; color: var(--p2); }
+  .p3 .pipeline-icon { background: #d9770622; color: var(--p3); }
+  .p4 .pipeline-icon { background: #7c3aed22; color: var(--p4); }
+
+  .pipeline-title { font-size: 16px; font-weight: 700; }
+  .pipeline-subtitle { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  .pipeline-form { display: flex; flex-direction: column; gap: 12px; }
+  .form-row { display: flex; gap: 8px; align-items: flex-end; }
+  .form-group { flex: 1; }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; font-weight: 500; }
+  input, select, textarea {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 14px;
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--p1); }
+  textarea { resize: vertical; min-height: 80px; }
+
+  .btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    white-space: nowrap;
+  }
+  .btn:hover { opacity: 0.9; }
+  .btn:active { transform: scale(0.98); }
+  .btn-primary { background: var(--p1); color: #fff; }
+  .btn-green { background: var(--p2); color: #fff; }
+  .btn-orange { background: var(--p3); color: #fff; }
+  .btn-purple { background: var(--p4); color: #fff; }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+  .btn-danger { background: var(--fail); color: #fff; }
+
+  /* Checkbox row */
+  .facility-checkboxes {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    max-height: 140px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .facility-checkboxes label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text);
+    margin: 0;
+    cursor: pointer;
+  }
+  .facility-checkboxes input[type=checkbox] { width: auto; }
+
+  /* Jobs table */
+  .jobs-section { margin-top: 8px; }
+  .section-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .section-title .badge {
+    background: var(--surface2);
+    color: var(--muted);
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 999px;
+  }
+  .filter-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .filter-row select { max-width: 200px; }
+
+  .jobs-table { width: 100%; border-collapse: collapse; }
+  .jobs-table th {
+    text-align: left;
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .jobs-table td {
+    padding: 12px;
+    font-size: 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  .jobs-table tr:hover td { background: var(--surface2); }
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .status-badge.done { background: #10b98122; color: var(--done); }
+  .status-badge.failed { background: #ef444422; color: var(--fail); }
+  .status-badge.running { background: #f59e0b22; color: var(--run); }
+  .status-badge.pending { background: #6366f122; color: var(--pending); }
+
+  .progress-bar {
+    height: 4px;
+    background: var(--surface2);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 4px;
+    width: 100%;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--p1);
+    transition: width 0.3s;
+  }
+
+  .type-label {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+  .type-facilityVideo { background: #2563eb22; color: var(--p1); }
+  .type-driveToVideo { background: #05966922; color: var(--p2); }
+  .type-codeAutogen { background: #d9770622; color: var(--p3); }
+  .type-snsContent { background: #7c3aed22; color: var(--p4); }
+
+  .job-id { font-family: monospace; font-size: 12px; color: var(--muted); }
+
+  /* Toast */
+  #toast {
+    position: fixed;
+    bottom: 32px;
+    right: 32px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    max-width: 400px;
+    font-size: 14px;
+    box-shadow: 0 20px 60px #0008;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.3s, transform 0.3s;
+    z-index: 999;
+  }
+  #toast.show { opacity: 1; transform: translateY(0); }
+  #toast.success { border-left: 4px solid var(--done); }
+  #toast.error { border-left: 4px solid var(--fail); }
+
+  /* Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #0009;
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+    width: 640px;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+  pre {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    font-size: 12px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    line-height: 1.6;
+  }
+  .close-btn {
+    position: absolute;
+    top: 16px; right: 16px;
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 20px;
+    cursor: pointer;
+  }
+
+  @media (max-width: 900px) {
+    .pipeline-grid { grid-template-columns: 1fr; }
+    .stats-bar { grid-template-columns: repeat(3, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span class="logo-badge">CODEX</span>
+    <div>
+      <div class="logo-title">Antigravity CODEX</div>
+      <div class="logo-sub">コンテンツパイプラインダッシュボード</div>
+    </div>
+  </div>
+  <nav class="header-nav">
+    <a href="/feed.html">フィード</a>
+    <a href="/summary.html">サマリー</a>
+    <a id="refreshBtn" href="#" onclick="loadAll(); return false;">更新</a>
+  </nav>
+</header>
+
+<main>
+  <!-- Stats -->
+  <div class="stats-bar" id="statsBar">
+    <div class="stat-card">
+      <div class="stat-value" id="statTotal">—</div>
+      <div class="stat-label">総ジョブ数</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" style="color:var(--run)" id="statRunning">—</div>
+      <div class="stat-label">実行中</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" style="color:var(--pending)" id="statPending">—</div>
+      <div class="stat-label">待機中</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" style="color:var(--done)" id="statDone">—</div>
+      <div class="stat-label">完了</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" style="color:var(--fail)" id="statFailed">—</div>
+      <div class="stat-label">失敗</div>
+    </div>
+  </div>
+
+  <!-- Pipeline Cards -->
+  <div class="pipeline-grid">
+
+    <!-- Pipeline ① 施設紹介動画 -->
+    <div class="pipeline-card p1">
+      <div class="pipeline-header">
+        <div class="pipeline-icon">🎬</div>
+        <div>
+          <div class="pipeline-title">① 施設紹介動画 自動生成</div>
+          <div class="pipeline-subtitle">DB → Claude Script → Gemini TTS → Remotion → FFMPEG → MP4 → Drive</div>
+        </div>
+      </div>
+      <div class="pipeline-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label>施設を選択</label>
+            <select id="p1FacilityId">
+              <option value="">施設を読み込み中...</option>
+            </select>
+          </div>
+          <div class="form-group" style="max-width:220px">
+            <label>Drive フォルダID（任意）</label>
+            <input id="p1FolderId" placeholder="Google Drive Folder ID">
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="runPipeline1()">生成開始</button>
+      </div>
+    </div>
+
+    <!-- Pipeline ② Drive → 動画 -->
+    <div class="pipeline-card p2">
+      <div class="pipeline-header">
+        <div class="pipeline-icon">📁</div>
+        <div>
+          <div class="pipeline-title">② Google Drive → 動画化</div>
+          <div class="pipeline-subtitle">Drive Folder → Download → Remotion Slideshow → Gemini TTS → FFMPEG → Drive</div>
+        </div>
+      </div>
+      <div class="pipeline-form">
+        <div class="form-group">
+          <label>Google Drive フォルダID</label>
+          <input id="p2FolderId" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs">
+        </div>
+        <div class="form-group">
+          <label>出力フォルダID（任意）</label>
+          <input id="p2OutputFolderId" placeholder="出力先 Google Drive Folder ID">
+        </div>
+        <button class="btn btn-green" onclick="runPipeline2()">動画化開始</button>
+      </div>
+    </div>
+
+    <!-- Pipeline ③ コード自動生成 -->
+    <div class="pipeline-card p3">
+      <div class="pipeline-header">
+        <div class="pipeline-icon">⚡</div>
+        <div>
+          <div class="pipeline-title">③ Claude Code CLI 自動生成</div>
+          <div class="pipeline-subtitle">Desktop Dispatch → CODEX → Claude Code CLI → Git Commit</div>
+        </div>
+      </div>
+      <div class="pipeline-form">
+        <div class="form-group">
+          <label>タスク内容</label>
+          <textarea id="p3Task" placeholder="例: 施設一覧にCSVエクスポート機能を追加する"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>コンテキスト（任意）</label>
+            <input id="p3Context" placeholder='{"branch":"main"}'>
+          </div>
+          <div class="form-group" style="max-width:140px">
+            <label>モード</label>
+            <select id="p3DryRun">
+              <option value="true">ドライラン（安全）</option>
+              <option value="false">実際に実行</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-orange" onclick="runPipeline3()">コード生成開始</button>
+      </div>
+    </div>
+
+    <!-- Pipeline ④ SNSコンテンツ量産 -->
+    <div class="pipeline-card p4">
+      <div class="pipeline-header">
+        <div class="pipeline-icon">📱</div>
+        <div>
+          <div class="pipeline-title">④ SNSコンテンツ 量産</div>
+          <div class="pipeline-subtitle">複数施設 → Claude Script → Gemini TTS → Remotion 9:16 → FFMPEG → Drive</div>
+        </div>
+      </div>
+      <div class="pipeline-form">
+        <div class="form-group">
+          <label>対象施設（複数選択可）</label>
+          <div class="facility-checkboxes" id="p4Facilities">
+            <div style="color:var(--muted); font-size:13px">施設を読み込み中...</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>SNS動画用 Drive フォルダID（任意）</label>
+          <input id="p4FolderId" placeholder="SNS動画の保存先フォルダID">
+        </div>
+        <button class="btn btn-purple" onclick="runPipeline4()">量産開始</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Jobs List -->
+  <div class="jobs-section">
+    <div class="section-title">
+      ジョブ一覧
+      <span class="badge" id="jobCount">0件</span>
+    </div>
+    <div class="filter-row">
+      <select id="filterType" onchange="filterJobs()">
+        <option value="">全パイプライン</option>
+        <option value="facilityVideo">① 施設紹介動画</option>
+        <option value="driveToVideo">② Drive動画</option>
+        <option value="codeAutogen">③ コード生成</option>
+        <option value="snsContent">④ SNSコンテンツ</option>
+      </select>
+      <select id="filterStatus" onchange="filterJobs()">
+        <option value="">全ステータス</option>
+        <option value="running">実行中</option>
+        <option value="pending">待機中</option>
+        <option value="done">完了</option>
+        <option value="failed">失敗</option>
+      </select>
+    </div>
+    <table class="jobs-table" id="jobsTable">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>パイプライン</th>
+          <th>ステータス</th>
+          <th>進捗</th>
+          <th>開始</th>
+          <th>完了</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="jobsTbody">
+        <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">ジョブがありません</td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<!-- Job Detail Modal -->
+<div class="modal-overlay" id="jobModal" onclick="if(event.target===this)closeModal()">
+  <div class="modal" style="position:relative">
+    <button class="close-btn" onclick="closeModal()">✕</button>
+    <div class="modal-title" id="modalTitle">ジョブ詳細</div>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+let allJobs = [];
+let facilities = [];
+let autoRefreshTimer = null;
+
+const PIPELINE_LABELS = {
+  facilityVideo: '① 施設紹介動画',
+  driveToVideo: '② Drive動画',
+  codeAutogen: '③ コード生成',
+  snsContent: '④ SNSコンテンツ',
+};
+
+async function api(path, opts = {}) {
+  const r = await fetch('/api/pipelines' + path, {
+    headers: { 'Content-Type': 'application/json' },
+    ...opts,
+  });
+  if (!r.ok) {
+    const e = await r.json().catch(() => ({}));
+    throw new Error(e.error || `HTTP ${r.status}`);
+  }
+  return r.json();
+}
+
+async function loadAll() {
+  await Promise.all([loadStats(), loadFacilities(), loadJobs()]);
+}
+
+async function loadStats() {
+  try {
+    const s = await api('/stats');
+    document.getElementById('statTotal').textContent = s.total;
+    document.getElementById('statRunning').textContent = s.running;
+    document.getElementById('statPending').textContent = s.pending;
+    document.getElementById('statDone').textContent = s.done;
+    document.getElementById('statFailed').textContent = s.failed;
+  } catch {}
+}
+
+async function loadFacilities() {
+  try {
+    const facs = await fetch('/api/facilities').then(r => r.json());
+    facilities = facs;
+
+    // Pipeline ① select
+    const sel = document.getElementById('p1FacilityId');
+    sel.innerHTML = '<option value="">施設を選択...</option>';
+    facs.forEach(f => {
+      sel.innerHTML += `<option value="${f.id}">${f.name}（${f.facility_type || '種別未設定'}）</option>`;
+    });
+
+    // Pipeline ④ checkboxes
+    const cb = document.getElementById('p4Facilities');
+    if (!facs.length) {
+      cb.innerHTML = '<div style="color:var(--muted);font-size:13px">施設が登録されていません</div>';
+      return;
+    }
+    cb.innerHTML = facs.map(f => `
+      <label>
+        <input type="checkbox" value="${f.id}" class="p4-fac-cb">
+        ${f.name}（${f.facility_type || '種別未設定'}）
+      </label>
+    `).join('');
+  } catch {}
+}
+
+async function loadJobs() {
+  try {
+    const jobs = await api('/jobs');
+    allJobs = jobs;
+    renderJobs(jobs);
+    document.getElementById('jobCount').textContent = `${jobs.length}件`;
+  } catch {}
+}
+
+function filterJobs() {
+  const type = document.getElementById('filterType').value;
+  const status = document.getElementById('filterStatus').value;
+  const filtered = allJobs.filter(j =>
+    (!type || j.type === type) && (!status || j.status === status)
+  );
+  renderJobs(filtered);
+}
+
+function renderJobs(jobs) {
+  const tbody = document.getElementById('jobsTbody');
+  if (!jobs.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">ジョブがありません</td></tr>';
+    return;
+  }
+  tbody.innerHTML = jobs.map(j => `
+    <tr>
+      <td class="job-id">${j.id.slice(0, 8)}...</td>
+      <td><span class="type-label type-${j.type}">${PIPELINE_LABELS[j.type] || j.type}</span></td>
+      <td>${statusBadge(j.status)}</td>
+      <td style="min-width:120px">
+        <div>${j.progress}%</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${j.progress}%"></div></div>
+      </td>
+      <td style="color:var(--muted);font-size:12px">${fmtTime(j.startedAt || j.createdAt)}</td>
+      <td style="color:var(--muted);font-size:12px">${j.finishedAt ? fmtTime(j.finishedAt) : '—'}</td>
+      <td style="display:flex;gap:6px">
+        <button class="btn btn-sm" onclick="showJobDetail('${j.id}')">詳細</button>
+        ${j.status === 'pending' ? `<button class="btn btn-sm btn-danger" onclick="cancelJob('${j.id}')">中止</button>` : ''}
+      </td>
+    </tr>
+  `).join('');
+}
+
+function statusBadge(status) {
+  const labels = { done: '完了', failed: '失敗', running: '実行中', pending: '待機中' };
+  const dots = { done: '●', failed: '●', running: '◎', pending: '○' };
+  return `<span class="status-badge ${status}">${dots[status] || '?'} ${labels[status] || status}</span>`;
+}
+
+function fmtTime(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+async function runPipeline1() {
+  const facilityId = document.getElementById('p1FacilityId').value;
+  if (!facilityId) return toast('施設を選択してください', 'error');
+  const folderId = document.getElementById('p1FolderId').value.trim();
+  try {
+    const res = await api('/facility-video', {
+      method: 'POST',
+      body: JSON.stringify({ facilityId, driveConfig: folderId ? { folderId } : {} }),
+    });
+    toast(`✓ ${res.message}\nJob ID: ${res.jobId.slice(0, 8)}...`, 'success');
+    startAutoRefresh();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function runPipeline2() {
+  const folderId = document.getElementById('p2FolderId').value.trim();
+  if (!folderId) return toast('フォルダIDを入力してください', 'error');
+  const outputFolderId = document.getElementById('p2OutputFolderId').value.trim();
+  try {
+    const res = await api('/drive-to-video', {
+      method: 'POST',
+      body: JSON.stringify({ folderId, driveConfig: outputFolderId ? { outputFolderId } : {} }),
+    });
+    toast(`✓ ${res.message}\nJob ID: ${res.jobId.slice(0, 8)}...`, 'success');
+    startAutoRefresh();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function runPipeline3() {
+  const task = document.getElementById('p3Task').value.trim();
+  if (!task) return toast('タスク内容を入力してください', 'error');
+  const ctxRaw = document.getElementById('p3Context').value.trim();
+  const dryRun = document.getElementById('p3DryRun').value === 'true';
+  let context = {};
+  if (ctxRaw) {
+    try { context = JSON.parse(ctxRaw); } catch { return toast('コンテキストのJSON形式が不正です', 'error'); }
+  }
+  try {
+    const res = await api('/code-autogen', {
+      method: 'POST',
+      body: JSON.stringify({ task, context, dryRun }),
+    });
+    toast(`✓ ${res.message}\nJob ID: ${res.jobId.slice(0, 8)}...${dryRun ? '\n（ドライランモード）' : ''}`, 'success');
+    startAutoRefresh();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function runPipeline4() {
+  const checked = [...document.querySelectorAll('.p4-fac-cb:checked')].map(c => parseInt(c.value));
+  if (!checked.length) return toast('施設を1件以上選択してください', 'error');
+  const snsFolderId = document.getElementById('p4FolderId').value.trim();
+  try {
+    const res = await api('/sns-content', {
+      method: 'POST',
+      body: JSON.stringify({ facilityIds: checked, driveConfig: snsFolderId ? { snsFolderId } : {} }),
+    });
+    toast(`✓ ${res.message}\nJob ID: ${res.jobId.slice(0, 8)}...`, 'success');
+    startAutoRefresh();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function cancelJob(id) {
+  try {
+    await api(`/jobs/${id}`, { method: 'DELETE' });
+    toast('ジョブをキャンセルしました', 'success');
+    loadAll();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function showJobDetail(id) {
+  try {
+    const job = await api(`/jobs/${id}`);
+    document.getElementById('modalTitle').textContent = `ジョブ詳細 — ${PIPELINE_LABELS[job.type] || job.type}`;
+    document.getElementById('modalContent').innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+        <div><div style="color:var(--muted);font-size:12px">ステータス</div>${statusBadge(job.status)}</div>
+        <div><div style="color:var(--muted);font-size:12px">進捗</div><b>${job.progress}%</b></div>
+        <div><div style="color:var(--muted);font-size:12px">開始</div>${fmtTime(job.startedAt)}</div>
+        <div><div style="color:var(--muted);font-size:12px">完了</div>${fmtTime(job.finishedAt)}</div>
+        <div><div style="color:var(--muted);font-size:12px">トリガー</div>${job.triggeredBy || '—'}</div>
+        <div><div style="color:var(--muted);font-size:12px">Job ID</div><span style="font-family:monospace;font-size:12px">${job.id}</span></div>
+      </div>
+      ${job.steps.length ? `
+        <div style="color:var(--muted);font-size:12px;margin-bottom:8px">実行ステップ</div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px;line-height:1.8">
+          ${job.steps.map(s => `<div>▸ [${s.pct}%] ${s.step}</div>`).join('')}
+        </div>
+      ` : ''}
+      ${job.error ? `<div style="color:var(--fail);background:#ef444411;border:1px solid #ef444433;border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px">⚠ ${job.error}</div>` : ''}
+      ${job.output ? `
+        <div style="color:var(--muted);font-size:12px;margin-bottom:8px">出力</div>
+        <pre>${JSON.stringify(job.output, null, 2)}</pre>
+      ` : ''}
+    `;
+    document.getElementById('jobModal').classList.add('open');
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+function closeModal() {
+  document.getElementById('jobModal').classList.remove('open');
+}
+
+function toast(msg, type = 'success') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `${type} show`;
+  setTimeout(() => { el.classList.remove('show'); }, 4000);
+}
+
+function startAutoRefresh() {
+  if (autoRefreshTimer) return;
+  autoRefreshTimer = setInterval(() => {
+    loadStats();
+    loadJobs();
+    const hasActive = allJobs.some(j => j.status === 'running' || j.status === 'pending');
+    if (!hasActive) {
+      clearInterval(autoRefreshTimer);
+      autoRefreshTimer = null;
+    }
+  }, 3000);
+}
+
+// 初期化
+document.addEventListener('DOMContentLoaded', () => {
+  loadAll();
+  // 3秒ごとに統計を自動更新
+  setInterval(loadStats, 5000);
+});
+</script>
+</body>
+</html>

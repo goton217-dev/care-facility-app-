@@ -1,0 +1,22 @@
+{
+  "name": "care-facility-remotion",
+  "version": "1.0.0",
+  "description": "Remotion video compositions for care facility content pipelines",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "npx remotion studio",
+    "render:facility": "npx remotion render FacilityVideo --output out/facility-video.mp4",
+    "render:sns": "npx remotion render SNSShort --output out/sns-short.mp4",
+    "render:slideshow": "npx remotion render DriveSlideshow --output out/slideshow.mp4"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.0",
+    "remotion": "^4.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "typescript": "^5.0.0"
+  }
+}
